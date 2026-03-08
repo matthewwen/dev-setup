@@ -1,0 +1,29 @@
+#!/usr/bin/env zsh
+source $(dirname $0)/../../dev/common.sh
+
+# ==============================================================================
+# Example work script
+# Customize SSH_HOST and the sync_command calls for your project
+# ==============================================================================
+SSH_HOST="ssh-desktop"
+
+list-jobs() {
+    echo "override this with your job listing command"
+}
+
+setup() {
+    work --host $SSH_HOST
+
+    sleep 2
+    (
+        ws pkg1 
+        ws pkg2
+        wait
+    )
+}
+
+if [ -z $1 ]; then
+    setup
+else
+    $@
+fi

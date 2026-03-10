@@ -157,3 +157,16 @@ for script in $DEV_SETUP/bin/setups/work-*; do
     "
     compdef "_${base//-/_}_complete" "$base"
 done
+
+# ==============================================================================
+# get path of pkg / mono repo
+# ==============================================================================
+ws_path() {
+    ws $1
+    pwd -L
+}
+
+mr_path() {
+    mr $1
+    pwd -L
+}

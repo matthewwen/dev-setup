@@ -4,23 +4,20 @@ export DEV_WS="$HOME/workspaces"
 export MR_WS="$HOME/workspaces/MonoRepo"
 
 # ==============================================================================
-# ws
+# common setup for ws and mr
 # ==============================================================================
-_ws_completion() {
-    local -a dirs
-    dirs=($1/*(-/:t))
-    _describe 'directories' dirs
-}
-
-ws() {
-    local dir=$1
+_common() {
+    local loc=$1
+    local dir=$2
     if [ -z "$dir" ]; then
-        cd $DEV_WS
+        cd $loc
     else
-        local target=$DEV_WS/"$dir"
+        local target=$loc/"$dir"
         if [ -L "$target" ]; then
             local curr=$target
-            while [[ -L $curr ]]; do curr="$(realpath "$curr")"; done
+            while [[ -L $curr ]]; do
+                curr="$(realpath "$curr")"
+            done
             cd $curr
         else
             cd "$target"
@@ -28,25 +25,30 @@ ws() {
     fi
 }
 
-compdef _ws_completion ws
-
-# ==============================================================================
-# mr - cd into a mono repo directory (directories only)
-# ==============================================================================
-_mr_completion() {
+_common_completion() {
     local -a dirs
-    dirs=(${(f)"$(find $MR_WS -mindepth 1 -maxdepth 1 -type d 2>/dev/null | xargs -n 1 basename)"})
+    dirs=($1/*(-/:t))
     _describe 'directories' dirs
 }
 
-mr() {
-    local dir=$1
-    if [ -z "$dir" ]; then
-        cd $MR_WS
-    else
-        cd $MR_WS/"$dir"
-    fi
+ws() {
+    _common $DEV_WS "$@"
 }
+
+_ws_completion() {
+    _common_completion $DEV_WS
+}
+
+compdef _ws_completion ws
+
+mr() {
+    _common_completion $MR_WS
+}
+
+_mr_completion() {
+    _common $MR_WS "$@"
+}
+
 
 compdef _mr_completion mr
 

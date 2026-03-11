@@ -8,7 +8,7 @@ export MR_WS="$HOME/workspaces/MonoRepo"
 # ==============================================================================
 _ws_completion() {
     local -a dirs
-    dirs=(${(f)"$(ls -d $DEV_WS/*/ 2>/dev/null | xargs -n 1 basename)"})
+    dirs=($1/*(-/:t))
     _describe 'directories' dirs
 }
 

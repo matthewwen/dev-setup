@@ -160,6 +160,18 @@ for script in $DEV_SETUP/bin/setups/work-*; do
     compdef "_${base//-/_}_complete" "$base"
 done
 
+_edit_completion() {
+    local -a scripts
+    scripts=($DEV_SETUP/bin/setups/*(:t))
+    _describe 'work scripts' scripts
+}
+
+edit() {
+    vi $DEV_SETUP/bin/setups/$1
+}
+
+compdef _edit_completion edit
+
 # ==============================================================================
 # get path of pkg / mono repo
 # ==============================================================================

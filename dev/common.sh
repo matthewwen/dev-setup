@@ -42,11 +42,11 @@ _ws_completion() {
 compdef _ws_completion ws
 
 mr() {
-    _common_completion $MR_WS
+    _common $MR_WS "$@"
 }
 
 _mr_completion() {
-    _common $MR_WS "$@"
+    _common_completion $MR_WS
 }
 
 

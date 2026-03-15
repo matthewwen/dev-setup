@@ -33,4 +33,4 @@ git_prompt_info() {
   echo " %F{yellow}($branch$dirty)%f"
 }
 
-export PROMPT='$CONDA_PROMPT_MODIFIER%F{magenta}%n:%f%F{blue}$(prompt_pwd_short)%f$(git_prompt_info) %F{cyan}%#%f '
+export PROMPT='%F{magenta}%n:%f%F{blue}$(prompt_pwd_short)%f$(git_prompt_info) %F{cyan}%#%f '

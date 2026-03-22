@@ -75,33 +75,33 @@ sync_command() {
     dest=${2:-"$DEV_WS/$(basename $(pwd -L))"}
     dest="${dest%/}"
 
-    rm -rf mattwen_git_log.txt mattwen_git_status.txt
-    git log > mattwen_git_log.txt
-    git status > mattwen_git_status.txt
+    rm -rf ${USER}_git_log.txt ${USER}_git_status.txt
+    git log > ${USER}_git_log.txt
+    git status > ${USER}_git_status.txt
 
     rsync -av --progress --stats \
+        --delete \
         --exclude ".git" \
         --exclude ".hatch" \
         --exclude ".ruff_cache" \
         --exclude "build" \
+        --exclude "node_modules" \
+        --exclude "Cargo.lock" \
+        --exclude "target" \
         --exclude "coverage" \
         --exclude ".venv" \
         --exclude ".mypy_cache" \
         --exclude "__pycache__" \
         -e ssh . "$host:${dest}"
 
-    rm -rf mattwen_git_log.txt mattwen_git_status.txt
+    rm -rf ${USER}_git_log.txt ${USER}_git_status.txt
 }
 
 # ==============================================================================
 # cleanup / bye
 # ==============================================================================
 cleanup() {
-    tmux kill-session -t notebook 2>/dev/null &
-    tmux kill-session -t terminal 2>/dev/null &
-    tmux kill-session -t pod 2>/dev/null &
-    tmux kill-session -t pod-dev 2>/dev/null &
-    tmux ls 2>/dev/null | grep "sync" | awk '{print substr($1, 0, length($1))}' | while read line; do tmux kill-session -t $line; done
+    tmux ls 2>/dev/null | grep -v "workspace" | awk '{print substr($1, 0, length($1))}' | while read line; do tmux kill-session -t $line; done
     wait
 }
 
@@ -180,7 +180,11 @@ ws_path() {
     pwd -L
 }
 
+compdef _ws_completion ws_path
+
 mr_path() {
     mr $1
     pwd -L
 }
+
+compdef _mr_completion mr_path

@@ -1,0 +1,24 @@
+" --------------------------------
+" Theme
+" https://draculatheme.com/vim
+" --------------------------------
+packadd! dracula
+syntax enable
+colorscheme dracula
+set termguicolors
+
+" --------------------------------
+" UI
+" --------------------------------
+set number                " show line numbers
+
+" --------------------------------
+" Tabs & Indentation
+" --------------------------------
+set tabstop=4             " a tab = 4 spaces
+set shiftwidth=4          " indentation uses 4 spaces
+set softtabstop=4         " tab key inserts 4 spaces
+set expandtab             " use spaces instead of tabs
+
+set autoindent            " copy indentation from current line
+set smartindent           " smarter auto-indentation

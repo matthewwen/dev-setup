@@ -3,6 +3,9 @@ autoload -Uz compinit && compinit
 export DEV_WS="$HOME/workspaces"
 export MR_WS="$HOME/workspaces/MonoRepo"
 
+# Source user config if it exists
+[ -f "$HOME/.devsetuprc" ] && source "$HOME/.devsetuprc"
+
 # ==============================================================================
 # common setup for ws and mr
 # ==============================================================================
@@ -23,6 +26,14 @@ _common() {
             cd "$target"
         fi
     fi
+}
+
+_devsetuprc_set() {
+    local key="$1" val="$2"
+    [[ -z "$val" ]] && return
+    local rc="$HOME/.devsetuprc"
+    export "$key=$val"
+    sed -i '' "s|^export ${key}=.*|export ${key}=\"${val}\"|" "$rc"
 }
 
 _common_completion() {
@@ -64,6 +75,11 @@ start_tmux_session() {
     fi
     tmux new-session -d -s $session_name && \
         tmux send-keys -t $session_name "$command" "ENTER"
+}
+
+workspace() {
+    start_tmux_session "workspace" "cd $DEV_WS"
+    tmux a -t workspace
 }
 
 # ==============================================================================
@@ -124,6 +140,7 @@ parse_work_args() {
         esac
     done
     WORK_HOST=${WORK_HOST:-"ssh-desktop"}
+    _devsetuprc_set WORK_HOST "$WORK_HOST"
 }
 
 work() {

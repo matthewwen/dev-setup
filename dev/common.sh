@@ -85,6 +85,8 @@ workspace() {
 # ==============================================================================
 # sync - rsync current directory to a remote SSH desktop
 # Usage: sync_command <host> [dest]
+# 
+# for liv_sync, install fswatch via brew install fswatch
 # ==============================================================================
 sync_command() {
     host=$1
@@ -111,6 +113,28 @@ sync_command() {
         -e ssh . "$host:${dest}"
 
     rm -rf ${USER}_git_log.txt ${USER}_git_status.txt
+}
+
+live_sync() {
+    host=$1
+    dest=${2:-"$DEV_WS/$(basename "$(pwd -L)")"}
+    dest="${dest%/}"
+
+    sync_command $host $dest
+    eval "fswatch -o . \
+      --exclude='\.git/' \
+      --exclude='node_modules/' \
+      --exclude='\.venv/' \
+      --exclude='__pycache__/' \
+      --exclude='${USER}_git_log.txt' \
+      --exclude='${USER}_git_status.txt' \
+      --exclude='build/' \
+      --exclude='coverage/' \
+    | while read -r _; do
+        echo "Change detected, syncing..."
+        sync_command $host $dest
+      done
+    "
 }
 
 # ==============================================================================

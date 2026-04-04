@@ -1,7 +1,13 @@
 autoload -Uz compinit && compinit
 
-export DEV_WS="$HOME/workspaces"
-export MR_WS="$HOME/workspaces/MonoRepo"
+# ============================================================================
+# set DEV_WS, MR_WS, and DEV_SETUP via ~/.zshrc or init caller script
+#
+# export DEV_WS=...
+# export MR_WS=...
+# export DEV_SETUP=...
+# source $HOME/.../dev-setup/dev/macos.sh
+# ============================================================================
 
 # Source user config if it exists
 [ -f "$HOME/.devsetuprc" ] && source "$HOME/.devsetuprc"
@@ -60,8 +66,12 @@ _mr_completion() {
     _common_completion $MR_WS
 }
 
-
 compdef _mr_completion mr
+
+workspace() {
+    start_tmux_session "workspace"
+    tmux a -t workspace
+}
 
 # ==============================================================================
 # tmux
@@ -75,11 +85,6 @@ start_tmux_session() {
     fi
     tmux new-session -d -s $session_name && \
         tmux send-keys -t $session_name "$command" "ENTER"
-}
-
-workspace() {
-    start_tmux_session "workspace" "cd $DEV_WS"
-    tmux a -t workspace
 }
 
 # ==============================================================================
@@ -120,6 +125,7 @@ live_sync() {
     dest=${2:-"$DEV_WS/$(basename "$(pwd -L)")"}
     dest="${dest%/}"
 
+    # brew install fswatch
     sync_command $host $dest
     eval "fswatch -o . \
       --exclude='\.git/' \
@@ -135,6 +141,13 @@ live_sync() {
         sync_command $host $dest
       done
     "
+}
+
+sync_dir() {
+    local host="$1"
+    local dir="$2"
+    local name=$(basename $(pwd -L))
+    start_tmux_session "sync-$name" "while true; do (sync_command $host $dir && sleep 600); done"
 }
 
 # ==============================================================================
@@ -163,18 +176,14 @@ parse_work_args() {
             *) echo "Unknown option: $1"; return 1 ;;
         esac
     done
-    WORK_HOST=${WORK_HOST:-"ssh-desktop"}
+    WORK_HOST=${WORK_HOST:-"clouddesk"}
     _devsetuprc_set WORK_HOST "$WORK_HOST"
 }
 
 work() {
     cleanup
     parse_work_args "$@"
-
-    start_tmux_session workspace "cd $DEV_WS" &
-    start_tmux_session terminal  "cd $DEV_WS" &
-    start_tmux_session ssh       "ssh $WORK_HOST" &
-    wait
+    start_tmux_session workspace 
 }
 
 _work_complete() {
@@ -189,8 +198,10 @@ compdef _work_complete work
 # ==============================================================================
 # autocomplete for work-* scripts in bin/setups/
 # ==============================================================================
-COMMON_PATH=$(dirname $0)
-DEV_SETUP=$(realpath $COMMON_PATH/..)
+if [[ -z ${DEV_SETUP} ]]; then
+    COMMON_PATH=$(dirname $0)
+    DEV_SETUP=$(realpath $COMMON_PATH/..)
+fi
 for script in $DEV_SETUP/bin/setups/work-*; do
     local base=$(basename $script)
     eval "_${base//-/_}_complete() {

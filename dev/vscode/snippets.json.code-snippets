@@ -3,7 +3,7 @@
 	// How to setup -> Snippets: Configure Snippets
 	// 
 	// cd "$HOME/Library/Application Support/Code/User/snippets"
-	// ln -s $(mr_path dev)/vscode/snippets.json.code-snippets snippets.json.code-snippets
+	// ln -s $(ws_path dev-setup)/dev/vscode/snippets.json.code-snippets snippets.json.code-snippets
 	// ============================================================================
 	//
 	// ============================================================================
@@ -30,20 +30,35 @@
 		"scope": "javascript,typescript",
 		"prefix": "test",
 		"body": "test('$1', () => {\n\t$0\n});",
-		"include": ["**/*.test.ts", "*.spec.ts"],
-		"exclude": ["**/temp/*.ts"],
+		"include": [
+			"**/*.test.ts",
+			"*.spec.ts"
+		],
+		"exclude": [
+			"**/temp/*.ts"
+		],
 		"description": "Insert test block"
 	},
 	// ============================================================================
 	// Custom Organization
 	// ============================================================================
-	"Section Header": {
-    "prefix": "hdr",
-    "body": [
-      "# ============================================================================",
-      "# ${1:Title}",
-      "# ============================================================================"
-    ],
-    "description": "Section header comment"
-  }
+	"Section Header JS": {
+		"prefix": "hdr",
+		"scope": "javascript,typescript",
+		"body": [
+			"// ============================================================================",
+			"// ${1:Title}",
+			"// ============================================================================"
+		],
+		"description": "Section header comment",
+	},
+	"Section Header General": {
+		"prefix": "hdr",
+		"body": [
+			"# ============================================================================",
+			"# ${1:Title}",
+			"# ============================================================================"
+		],
+		"description": "Section header comment",
+	},
 }

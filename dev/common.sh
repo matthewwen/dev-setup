@@ -83,8 +83,10 @@ start_tmux_session() {
     if [[ $session_name != "workspace" ]]; then
         tmux kill-session -t $session_name 2>/dev/null
     fi
-    tmux new-session -d -s $session_name && \
+    tmux new-session -d -s $session_name
+    if [[ -n $command ]]; then
         tmux send-keys -t $session_name "$command" "ENTER"
+    fi
 }
 
 # ==============================================================================

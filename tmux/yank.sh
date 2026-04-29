@@ -57,12 +57,17 @@ fi
 
 # build up OSC 52 ANSI escape sequence
 esc="\033]52;c;$( printf %s "$buf" | head -c $maxlen | base64 | tr -d '\r\n' )\a"
-esc="\033Ptmux;\033$esc\033\\"
 
 # resolve target terminal to send escape sequence
 # if we are on remote machine, send directly to SSH_TTY to transport escape sequence
 # to terminal on local machine, so data lands in clipboard on our local machine
 pane_active_tty=$(tmux list-panes -F "#{pane_active} #{pane_tty}" | awk '$1=="1" { print $2 }')
 target_tty="${SSH_TTY:-$pane_active_tty}"
+
+# Only wrap in DCS passthrough when writing through tmux (pane tty).
+# When writing directly to SSH_TTY we bypass tmux, so the raw OSC 52 is correct.
+if [ "$target_tty" != "${SSH_TTY:-}" ]; then
+  esc="\033Ptmux;\033$esc\033\\"
+fi
 
 printf "$esc" > "$target_tty"

@@ -1,7 +1,7 @@
 source $(dirname $0)/common.sh
 
 # ==============================================================================
-# Function to show last 3 directories (or fewer if higher up)
+# Function to show last 5 directories (or fewer if higher up)
 # ==============================================================================
 setopt prompt_subst
 prompt_pwd_short() {
@@ -9,8 +9,8 @@ prompt_pwd_short() {
   local -a parts
   parts=("${(@s:/:)p}")       # split path by "/"
 
-  if (( ${#parts[@]} > 2 )); then
-    echo ".../${(j:/:)parts[-2,-1]}"
+  if (( ${#parts[@]} > 5 )); then
+    echo ".../${(j:/:)parts[-5,-1]}"
   else
     echo "$p"
   fi
@@ -33,4 +33,5 @@ git_prompt_info() {
   echo " %F{yellow}($branch$dirty)%f"
 }
 
-export PROMPT='%F{magenta}%n:%f%F{blue}$(prompt_pwd_short)%f$(git_prompt_info) %F{cyan}%#%f '
+export PROMPT='%F{blue}[$(prompt_pwd_short)]%f
+%F{magenta}%n%f$(git_prompt_info) %F{cyan}%#%f '

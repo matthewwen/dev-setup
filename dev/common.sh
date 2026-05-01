@@ -229,7 +229,12 @@ edit() {
     vi $DEV_SETUP/bin/setups/$1
 }
 
+edit-vscode() {
+    code $DEV_SETUP/bin/setups/$1
+}
+
 compdef _edit_completion edit
+compdef _edit_completion edit-vscode
 
 # ==============================================================================
 # get path of pkg / mono repo

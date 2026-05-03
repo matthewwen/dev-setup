@@ -3,7 +3,8 @@
 # ln -sf $(pwd)/ghostty/config ~/.config/ghostty/config
 
 keybind = global:ctrl+space=toggle_quick_terminal
+quick-terminal-position = top
+quick-terminal-size = 70%,90%
 quit-after-last-window-closed = false
 initial-window = false
 keybind = global:ctrl+shift+w=close_surface
-

@@ -8,7 +8,8 @@ Shell utilities for managing a local dev environment with tmux and remote SSH de
 dev-setup/
 ├── dev/
 │   ├── common.sh       ← source this in your .zshrc
-│   └── macos.sh        ← macOS-specific setup (sources ~/.zshrc)
+│   ├── macos.sh        ← macOS-specific setup (sources ~/.zshrc)
+│   └── clouddesk.sh    ← CloudDesk setup with a red prompt scheme
 ├── tmux/
 │   ├── tmux.conf       ← main tmux config
 │   ├── tmux.remote.conf← remote session overrides

@@ -1,0 +1,72 @@
+# Copy this file to ~/.unison/dev-sync.prf and replace the placeholders.
+
+root = <local-path>
+root = ssh://<remote-host>/<remote-path>
+
+# VCS: Git repositories.
+ignore = Name .git
+
+# OS: macOS metadata.
+ignore = Name .DS_Store
+
+# Editors: Vim swap, backup, undo, and session artifacts.
+ignore = Name *.swp
+ignore = Name *.swo
+ignore = Name *.swn
+ignore = Name *~
+ignore = Name .netrwhist
+ignore = Name Session.vim
+
+# Editors: JetBrains and IntelliJ project metadata.
+ignore = Name .idea
+ignore = Name *.iml
+
+# Python: Hatch metadata.
+ignore = Name .hatch
+
+# Python: virtual environments.
+ignore = Name .venv
+ignore = Name venv
+ignore = Name env
+
+# Python: tool caches.
+ignore = Name .mypy_cache
+ignore = Name .pytest_cache
+ignore = Name .ruff_cache
+ignore = Name .tox
+ignore = Name __pycache__
+
+# Python: compiled extension/cache files.
+ignore = Name *.pyc
+ignore = Name *.pyo
+ignore = Name *.pyd
+
+# Python: packaging artifacts.
+ignore = Name *.egg-info
+ignore = Name .eggs
+ignore = Name pip-wheel-metadata
+
+# Node: dependency folders.
+ignore = Name node_modules
+
+# Build: common output directories.
+ignore = Name build
+ignore = Name dist
+ignore = Name out
+ignore = Name site
+ignore = Name htmlcov
+ignore = Name target
+
+# Logs: generated log directories and files.
+ignore = Name logs
+ignore = Name log
+ignore = Name *.log
+
+# Coverage: Python coverage outputs.
+ignore = Name .coverage
+ignore = Name .coverage.*
+
+# Safer defaults for development sync.
+confirmbigdel = true
+fastcheck = true
+times = true

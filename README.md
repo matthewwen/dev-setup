@@ -23,6 +23,10 @@ dev-setup/
 │   └── claude-status.sh← Claude Code status line (context %)
 ├── ghostty/
 │   └── config          ← Ghostty terminal config
+│   └── renew_env.sh    ← renew env vars in live panes
+├── unison/
+│   ├── README.md       ← local/remote Unison setup instructions
+│   └── dev-sync.prf    ← example Unison sync profile
 └── bin/setups/
     └── work-example    ← example work script, copy and customize
 ```
@@ -215,3 +219,20 @@ vim +PlugInstall +qall
 | `Ctrl-f` | `:BLines` | Search lines in current buffer |
 | `\f` | `:Rg` | Ripgrep across file contents |
 | `\b` | `:Buffers` | Fuzzy switch between open buffers |
+
+Inside the fzf popup:
+- `Ctrl-j` / `Ctrl-k` — move down/up
+- `Enter` — select
+- `Esc` — cancel
+
+### Other Useful fzf Commands
+
+| Command | Description |
+|---------|-------------|
+| `:Lines` | Search lines in open buffers |
+| `:History` | Recently opened files |
+| `:GFiles` | Git-tracked files only |
+| `:Commits` | Browse git commits |
+## Unison
+
+See `unison/README.md` for bidirectional local/remote sync setup.

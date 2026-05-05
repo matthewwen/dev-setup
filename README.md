@@ -70,7 +70,32 @@ ln -sf $(pwd)/tmux/renew_env.sh ~/.tmux/renew_env.sh
 ln -sf $(pwd)/tmux/tmux.remote.conf ~/.tmux/tmux.remote.conf
 ```
 
-Inside tmux, install plugins with `prefix + I`.
+### Plugins
+
+The config uses the following TPM plugins:
+
+| Plugin | Description |
+|--------|-------------|
+| [tmux-battery](https://github.com/tmux-plugins/tmux-battery) | Battery status in the status bar |
+| [tmux-prefix-highlight](https://github.com/tmux-plugins/tmux-prefix-highlight) | Highlights when prefix key is active |
+| [tmux-online-status](https://github.com/tmux-plugins/tmux-online-status) | Online/offline indicator |
+| [tmux-sidebar](https://github.com/tmux-plugins/tmux-sidebar) | Directory tree sidebar (`prefix + t`) |
+| [tmux-copycat](https://github.com/tmux-plugins/tmux-copycat) | Regex search in copy mode |
+| [tmux-open](https://github.com/tmux-plugins/tmux-open) | Open highlighted file/URL (`xdg-open` required) |
+| [tmux-plugin-sysstat](https://github.com/samoshkin/tmux-plugin-sysstat) | CPU/MEM stats in the status bar |
+| [tmux-resurrect](https://github.com/tmux-plugins/tmux-resurrect) | Save/restore sessions across restarts |
+| [tmux-continuum](https://github.com/tmux-plugins/tmux-continuum) | Auto-save sessions every 5 minutes |
+| [tmux-assistant-resurrect](https://github.com/timvw/tmux-assistant-resurrect) | AI-aware session restore |
+
+Install all plugins inside tmux with `prefix + I`. TPM will clone and load them automatically.
+
+### Session Persistence
+
+The config includes [tmux-resurrect](https://github.com/tmux-plugins/tmux-resurrect) and [tmux-continuum](https://github.com/tmux-plugins/tmux-continuum) for automatic session save/restore across tmux server restarts.
+
+- Sessions auto-save every 5 minutes
+- Last saved session auto-restores on tmux start
+- Manual save: `prefix + M-s` | Manual restore: `prefix + M-r`
 
 Key bindings:
 - `|` / `_` — split pane horizontal/vertical

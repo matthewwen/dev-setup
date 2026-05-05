@@ -162,7 +162,6 @@ cleanup() {
 
 bye() {
     cleanup
-    tmux kill-server
     pmset displaysleepnow
 }
 

@@ -1,8 +1,23 @@
 " --------------------------------
+" vim-plug (auto-install if missing)
+" --------------------------------
+let data_dir = has('nvim') ? stdpath('data') . '/site' : '~/.vim'
+if empty(glob(data_dir . '/autoload/plug.vim'))
+  silent execute '!curl -fLo '.data_dir.'/autoload/plug.vim --create-dirs
+    \ https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim'
+  autocmd VimEnter * PlugInstall --sync | source $MYVIMRC
+endif
+
+call plug#begin('~/.vim/plugged')
+Plug 'dracula/vim', { 'as': 'dracula' }
+Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
+Plug 'junegunn/fzf.vim'
+call plug#end()
+
+" --------------------------------
 " Theme
 " https://draculatheme.com/vim
 " --------------------------------
-packadd! dracula
 syntax enable
 colorscheme dracula
 set termguicolors
@@ -11,6 +26,7 @@ set termguicolors
 " UI
 " --------------------------------
 set number                " show line numbers
+set mouse=a               " enable mouse in all modes
 
 " --------------------------------
 " Tabs & Indentation
@@ -22,3 +38,10 @@ set expandtab             " use spaces instead of tabs
 
 set autoindent            " copy indentation from current line
 set smartindent           " smarter auto-indentation
+
+" --------------------------------
+" fzf
+" --------------------------------
+nnoremap <C-p> :Files<CR>
+nnoremap <C-f> :Rg<CR>
+nnoremap <leader>b :Buffers<CR>

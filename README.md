@@ -79,7 +79,7 @@ The config uses the following TPM plugins:
 | [tmux-battery](https://github.com/tmux-plugins/tmux-battery) | Battery status in the status bar |
 | [tmux-prefix-highlight](https://github.com/tmux-plugins/tmux-prefix-highlight) | Highlights when prefix key is active |
 | [tmux-online-status](https://github.com/tmux-plugins/tmux-online-status) | Online/offline indicator |
-| [tmux-sidebar](https://github.com/tmux-plugins/tmux-sidebar) | Directory tree sidebar (`prefix + t`) |
+| [tmux-sidebar](https://github.com/tmux-plugins/tmux-sidebar) | Directory tree sidebar (`prefix + t`) — requires `tree` (`sudo dnf install -y tree`) |
 | [tmux-copycat](https://github.com/tmux-plugins/tmux-copycat) | Regex search in copy mode |
 | [tmux-open](https://github.com/tmux-plugins/tmux-open) | Open highlighted file/URL (`xdg-open` required) |
 | [tmux-plugin-sysstat](https://github.com/samoshkin/tmux-plugin-sysstat) | CPU/MEM stats in the status bar |
@@ -104,3 +104,60 @@ Key bindings:
 - `F12` — toggle key passthrough (for nested remote sessions)
 - `M-Up` — enter copy mode (vi keys)
 - `prefix + $` — renew environment variables in all panes
+
+## Vim
+
+Plugins are managed with [vim-plug](https://github.com/junegunn/vim-plug) (auto-installs on first launch). Symlink the vimrc:
+
+```bash
+ln -sf $(pwd)/dev/vimrc ~/.vimrc
+```
+
+Then install plugins:
+
+```bash
+vim +PlugInstall +qall
+```
+
+### Dependencies
+
+Install [ripgrep](https://github.com/BurntSushi/ripgrep) for the `:Rg` fzf command:
+
+```bash
+# Amazon Linux 2023 (binary install)
+curl -LO https://github.com/BurntSushi/ripgrep/releases/download/14.1.1/ripgrep-14.1.1-x86_64-unknown-linux-musl.tar.gz
+tar xzf ripgrep-14.1.1-x86_64-unknown-linux-musl.tar.gz
+sudo cp ripgrep-14.1.1-x86_64-unknown-linux-musl/rg /usr/local/bin/
+rm -rf ripgrep-14.1.1-x86_64-unknown-linux-musl*
+
+# macOS
+brew install ripgrep
+
+# Ubuntu / Debian
+sudo apt install -y ripgrep
+
+# Fedora / RHEL
+sudo dnf install -y ripgrep
+```
+
+### fzf Key Bindings
+
+| Key | Command | Description |
+|-----|---------|-------------|
+| `Ctrl-p` | `:Files` | Fuzzy find files in current directory |
+| `Ctrl-f` | `:Rg` | Ripgrep across file contents |
+| `\b` | `:Buffers` | Fuzzy switch between open buffers |
+
+Inside the fzf popup:
+- `Ctrl-j` / `Ctrl-k` — move down/up
+- `Enter` — select
+- `Esc` — cancel
+
+### Other Useful fzf Commands
+
+| Command | Description |
+|---------|-------------|
+| `:Lines` | Search lines in open buffers |
+| `:History` | Recently opened files |
+| `:GFiles` | Git-tracked files only |
+| `:Commits` | Browse git commits |

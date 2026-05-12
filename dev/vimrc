@@ -42,6 +42,7 @@ set smartindent           " smarter auto-indentation
 " --------------------------------
 " fzf
 " --------------------------------
-nnoremap <C-p> :Files<CR>
-nnoremap <C-f> :Rg<CR>
+nnoremap <C-p> :GFiles<CR>
+nnoremap <C-f> :BLines<CR>
+nnoremap <leader>f :Rg<CR>
 nnoremap <leader>b :Buffers<CR>

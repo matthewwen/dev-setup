@@ -92,7 +92,7 @@ _git-tmp-save() {
 git-add-worktree() {
     local dir=${1}
     _git-tmp-save
-    git worktree add .claude/worktrees/${dir}
+    git worktree add .claude/worktrees/${dir} ${2}
 }
 
 git-rm-worktree() {
@@ -104,15 +104,26 @@ git-to-worktree() {
     local wt=${1}
     local branch=$(_git-branch)
     _git-tmp-save
+    local did_commit=$?
     (
         cd .claude/worktrees/${wt}
         git reset --hard ${branch}
     )
+    if [[ $did_commit -eq 0 ]]; then
+        git reset HEAD~1
+        ( cd .claude/worktrees/${wt} && git reset HEAD~1 )
+    fi
 }
 
 git-from-worktree() {
     local wt=${1}
+    ( cd .claude/worktrees/${wt} && _git-tmp-save )
+    local did_commit=$?
     git reset --hard ${wt}
+    if [[ $did_commit -eq 0 ]]; then
+        git reset HEAD~1
+        ( cd .claude/worktrees/${wt} && git reset HEAD~1 )
+    fi
 }
 
 _git_wt_completion() {

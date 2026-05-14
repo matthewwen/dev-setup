@@ -27,6 +27,7 @@ set termguicolors
 " --------------------------------
 set number                " show line numbers
 set mouse=a               " enable mouse in all modes
+set nowrap                " don't wrap long lines
 
 " --------------------------------
 " Tabs & Indentation

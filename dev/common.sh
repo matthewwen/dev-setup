@@ -74,6 +74,55 @@ workspace() {
 }
 
 # ==============================================================================
+# git worktrees update
+# ==============================================================================
+_git-branch() {
+    git rev-parse --abbrev-ref HEAD 2>/dev/null
+}
+
+_git-tmp-save() {
+    if git diff --cached --quiet; then
+        git add .
+        git commit -m "tmp"
+    else
+        git commit -m "tmp"
+    fi
+}
+
+git-add-worktree() {
+    local dir=${1}
+    _git-tmp-save
+    git worktree add .claude/worktrees/${dir}
+}
+
+git-rm-worktree() {
+    local wt=${1}
+    git worktree remove .claude/worktrees/${wt}
+}
+
+git-to-worktree() {
+    local wt=${1}
+    local branch=$(_git-branch)
+    _git-tmp-save
+    (
+        cd .claude/worktrees/${wt}
+        git reset --hard ${branch}
+    )
+}
+
+git-from-worktree() {
+    local wt=${1}
+    git reset --hard ${wt}
+}
+
+_git_wt_completion() {
+    local wt_dir=".claude/worktrees"
+    [[ -d "$wt_dir" ]] || return
+    compadd -- ${wt_dir}/*(:t)
+}
+compdef _git_wt_completion git-rm-worktree git-to-worktree git-from-worktree
+
+# ==============================================================================
 # tmux
 # ==============================================================================
 start_tmux_session() {

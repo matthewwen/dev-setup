@@ -36,7 +36,7 @@ export WORKSPACE=~/workspaces/mwenclubhouse
 git_prompt_info() {
   # Are we inside a git repo?
   local branch
-  branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) || return
+  branch=$(_git-branch) || return
   echo " %F{yellow}($branch$dirty)%f"
 }
 

@@ -76,7 +76,7 @@ workspace() {
 # ==============================================================================
 # git worktrees update
 # ==============================================================================
-_git-branch() {
+_mw-git-branch() {
     git rev-parse --abbrev-ref HEAD 2>/dev/null
 }
 
@@ -97,12 +97,13 @@ git-add-worktree() {
 
 git-rm-worktree() {
     local wt=${1}
-    git worktree remove .claude/worktrees/${wt}
+    shift 1;
+    git worktree remove .claude/worktrees/${wt} $@
 }
 
 git-to-worktree() {
     local wt=${1}
-    local branch=$(_git-branch)
+    local branch=$(_mw-git-branch)
     _git-tmp-save
     local did_commit=$?
     (

@@ -47,3 +47,41 @@ nnoremap <C-p> :GFiles<CR>
 nnoremap <C-f> :BLines<CR>
 nnoremap <leader>f :Rg<CR>
 nnoremap <leader>b :Buffers<CR>
+
+" --------------------------------
+" Clipboard (OSC 52 via tmux/yank.sh)
+" --------------------------------
+set clipboard=unnamedplus
+
+let s:yank_script = fnamemodify(resolve(expand('<sfile>:p')), ':h:h') . '/tmux/yank.sh'
+
+autocmd TextYankPost * call s:YankToClipboard()
+
+function! s:YankToClipboard()
+  if v:event.operator !=# 'y'
+    return
+  endif
+  let l:text = join(v:event.regcontents, "\n")
+  if v:event.regtype ==# 'V'
+    let l:text .= "\n"
+  endif
+  if filereadable(s:yank_script)
+    call system(s:yank_script, l:text)
+  else
+    call s:Osc52Yank(l:text)
+  endif
+endfunction
+
+function! s:Osc52Yank(text)
+  let l:encoded = system('printf %s ' . shellescape(a:text) . ' | base64 | tr -d "\r\n"')
+  let l:osc = "\e]52;c;" . l:encoded . "\a"
+  if exists('$TMUX')
+    let l:osc = "\ePtmux;\e" . l:osc . "\e\\"
+  endif
+  if exists('$SSH_TTY')
+    call system('printf ' . shellescape(l:osc) . ' > $SSH_TTY')
+  else
+    exe "silent !printf " . shellescape(l:osc)
+    redraw!
+  endif
+endfunction

@@ -1,9 +1,5 @@
 {
-  "env": {
-    "AWS_PROFILE": "claude-code-DO-NOT-DELETE",
-    "AWS_REGION": "us-west-2"
-  },
-  "includeCoAuthoredBy": false,
+  "includeCoAuthoredBy": true,
   "model": "opus",
   "availableModels": [
     "opus",
@@ -42,18 +38,6 @@
         ]
       }
     ]
-  },
-  "enabledPlugins": {
-    "AmazonBuilderCoreAIAgents-core@aim": true,
-    "AmazonBuilderCoreAIAgents-pipeline-assistant@aim": true
-  },
-  "extraKnownMarketplaces": {
-    "aim": {
-      "source": {
-        "source": "directory",
-        "path": "/local/home/mattwen/.aim/cc-plugins"
-      }
-    }
   },
   "preferredNotifChannel": "auto",
   "autoCompactEnabled": false,

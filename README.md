@@ -14,7 +14,10 @@ dev-setup/
 │   ├── tmux.conf       ← main tmux config
 │   ├── tmux.remote.conf← remote session overrides
 │   ├── yank.sh         ← clipboard helper (pbcopy/xclip/OSC52)
-│   └── renew_env.sh    ← renew env vars in live panes
+│   ├── renew_env.sh    ← renew env vars in live panes
+│   └── claude-status.sh← Claude Code status line (context %)
+├── ghostty/
+│   └── config          ← Ghostty terminal config
 └── bin/setups/
     └── work-example    ← example work script, copy and customize
 ```
@@ -104,6 +107,29 @@ Key bindings:
 - `F12` — toggle key passthrough (for nested remote sessions)
 - `M-Up` — enter copy mode (vi keys)
 - `prefix + $` — renew environment variables in all panes
+
+## Claude Code
+
+Symlink the status line script:
+```bash
+ln -sf $(pwd)/tmux/claude-status.sh ~/.tmux/claude-status.sh
+```
+
+Then add the `statusLine` config to `~/.claude/settings.json`:
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "~/.tmux/claude-status.sh",
+    "refreshInterval": 10
+  }
+}
+```
+
+This displays a context window usage bar at the bottom of the Claude Code terminal:
+```
+ctx: 42% ▰▰▰▰▱▱▱▱▱▱
+```
 
 ## Vim
 

@@ -1,0 +1,66 @@
+{
+  "env": {
+    "AWS_PROFILE": "claude-code-DO-NOT-DELETE",
+    "AWS_REGION": "us-west-2"
+  },
+  "includeCoAuthoredBy": false,
+  "model": "opus",
+  "availableModels": [
+    "opus",
+    "sonnet"
+  ],
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "tmux display-message -p -t $TMUX_PANE '#{window_active}' | grep -q 0 && printf '\\a' > $(tmux display-message -p -t $TMUX_PANE '#{pane_tty}')"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash '/home/mattwen/.tmux/plugins/tmux-assistant-resurrect/hooks/claude-session-cleanup.sh'"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash '/home/mattwen/.tmux/plugins/tmux-assistant-resurrect/hooks/claude-session-track.sh'"
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "AmazonBuilderCoreAIAgents-core@aim": true,
+    "AmazonBuilderCoreAIAgents-pipeline-assistant@aim": true
+  },
+  "extraKnownMarketplaces": {
+    "aim": {
+      "source": {
+        "source": "directory",
+        "path": "/local/home/mattwen/.aim/cc-plugins"
+      }
+    }
+  },
+  "preferredNotifChannel": "auto",
+  "autoCompactEnabled": false,
+  "editorMode": "vim",
+  "statusLine": {
+    "type": "command",
+    "command": "~/.tmux/claude-status.sh",
+    "refreshInterval": 10
+  }
+}

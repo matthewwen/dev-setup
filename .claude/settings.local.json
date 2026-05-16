@@ -2,7 +2,6 @@
   "permissions": {
     "allow": [
       "Bash(claude *)",
-      "Bash(~/workspaces/mwen/src/MattWenScripts/bin/claude-insights-narrative.sh cd *)",
       "Bash(vim --version)",
       "Bash(tty *)"
     ]

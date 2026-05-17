@@ -151,19 +151,58 @@ start_tmux_session() {
 }
 
 # ==============================================================================
-# tnotify - run a command and notify via tmux bell when done
+# tnotify - notify via tmux bell when a command finishes (or immediately)
+# Usage: tnotify cmd args...   — run cmd, then bell on inactive window
+#        cmd1 && cmd2; tnotify — bell immediately (no command to run)
 # ==============================================================================
 tnotify() {
-    "$@"
-    local ret=$?
+    local ret=0
+    if [[ $# -gt 0 ]]; then
+        "$@"
+        ret=$?
+    fi
 
-    if [ -n "$TMUX" ] && [[ "$1" != "claude" ]]; then
-        tmux display-message -p -t "$TMUX_PANE" '#{window_active}' | grep -q 0 \
-          && printf '\a' > "$(tmux display-message -p -t "$TMUX_PANE" '#{pane_tty}')"
+    if [ -n "$TMUX" ] && [[ "${1:-}" != "claude" ]]; then
+        printf '\a' > "$(tmux display-message -p -t "$TMUX_PANE" '#{pane_tty}')"
     fi
 
     return $ret
 }
+
+# ==============================================================================
+# Auto-bell: notify via tmux bell when any command runs longer than threshold
+# Set TNOTIFY_THRESHOLD to adjust (default 10 seconds). Set to 0 to disable.
+# ==============================================================================
+TNOTIFY_THRESHOLD=${TNOTIFY_THRESHOLD:-10}
+zmodload zsh/datetime
+
+_tnotify_preexec() {
+    _tnotify_cmd_start=$EPOCHSECONDS
+    _tnotify_cmd_name="${1%% *}"
+}
+
+_tnotify_precmd() {
+    [[ -z "$_tnotify_cmd_start" ]] && return
+    [[ -z "$TMUX" ]] && { unset _tnotify_cmd_start _tnotify_cmd_name; return; }
+    [[ "$TNOTIFY_THRESHOLD" -eq 0 ]] && { unset _tnotify_cmd_start _tnotify_cmd_name; return; }
+
+    local elapsed=$(( EPOCHSECONDS - _tnotify_cmd_start ))
+    unset _tnotify_cmd_start
+
+    # Skip interactive commands that the user is already watching
+    case "$_tnotify_cmd_name" in
+        vim|nvim|nano|less|more|man|top|htop|claude|ssh|tmux) return ;;
+    esac
+    unset _tnotify_cmd_name
+
+    if (( elapsed >= TNOTIFY_THRESHOLD )); then
+        printf '\a' > "$(tmux display-message -p -t "$TMUX_PANE" '#{pane_tty}')"
+    fi
+}
+
+autoload -Uz add-zsh-hook
+add-zsh-hook preexec _tnotify_preexec
+add-zsh-hook precmd _tnotify_precmd
 
 # ==============================================================================
 # sync - rsync current directory to a remote SSH desktop

@@ -22,7 +22,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash '$HOME/.tmux/plugins/tmux-assistant-resurrect/hooks/claude-session-cleanup.sh'"
+            "command": "bash '~/.tmux/plugins/tmux-assistant-resurrect/hooks/claude-session-cleanup.sh'"
           }
         ]
       }
@@ -33,7 +33,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash '$HOME/.tmux/plugins/tmux-assistant-resurrect/hooks/claude-session-track.sh'"
+            "command": "bash '~/.tmux/plugins/tmux-assistant-resurrect/hooks/claude-session-track.sh'"
           }
         ]
       }

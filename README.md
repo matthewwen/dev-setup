@@ -9,7 +9,12 @@ dev-setup/
 ├── dev/
 │   ├── common.sh       ← source this in your .zshrc
 │   ├── macos.sh        ← macOS-specific setup (sources ~/.zshrc)
-│   └── clouddesk.sh    ← CloudDesk setup with a red prompt scheme
+│   ├── clouddesk.sh    ← CloudDesk setup with a red prompt scheme
+│   └── vimrc           ← legacy vim config
+├── nvim/
+│   ├── install.sh      ← one-shot installer (nvim + deps + config)
+│   ├── init.lua        ← bootstraps lazy.nvim + LazyVim
+│   └── lua/            ← config and plugin specs
 ├── tmux/
 │   ├── tmux.conf       ← main tmux config
 │   ├── tmux.remote.conf← remote session overrides
@@ -131,7 +136,64 @@ This displays a context window usage bar at the bottom of the Claude Code termin
 ctx: 42% ▰▰▰▰▱▱▱▱▱▱
 ```
 
-## Vim
+## Neovim (LazyVim)
+
+Full IDE experience via [LazyVim](https://www.lazyvim.org/) — includes autocomplete, file explorer, fuzzy finder, git integration, and more.
+
+### Install
+
+```bash
+./nvim/install.sh
+```
+
+This installs:
+- Neovim 0.11.2+ (appimage on Linux, Homebrew on macOS)
+- ripgrep, fd (for Telescope)
+- tree-sitter CLI (static binary on Linux, Homebrew on macOS)
+- Symlinks config to `~/.config/nvim` and bootstraps plugins
+
+### Key Bindings
+
+| Key | Action |
+|-----|--------|
+| `Space` | Leader key (shows which-key popup) |
+| `Ctrl-p` | Find files (Telescope) |
+| `Ctrl-f` | Search current buffer lines |
+| `<leader>f` or `\f` | Live grep across project |
+| `<leader>b` or `\b` | Switch buffers |
+| `Ctrl-t` | New tab |
+| `t` (in explorer) | Open file in new tab |
+| `gcc` | Comment/uncomment line |
+| `gc` (visual) | Comment/uncomment selection |
+| `\|` | Vertical split |
+| `_` | Horizontal split |
+| `<leader>e` | Toggle file explorer (snacks) |
+| `Ctrl-h/j/k/l` | Move between splits |
+| `V` select + `J/K` | Move selected lines up/down |
+| `Ctrl-d` / `Ctrl-u` | Half-page scroll (centered) |
+
+### Config Structure
+
+```
+nvim/
+├── install.sh            ← one-shot installer
+├── init.lua              ← bootstraps lazy.nvim + LazyVim
+├── lazyvim.json          ← LazyVim extras config
+└── lua/
+    ├── config/
+    │   ├── options.lua   ← editor options (tabs, clipboard, OSC52)
+    │   └── keymaps.lua   ← custom keybindings
+    └── plugins/
+        ├── colorscheme.lua ← dracula theme
+        ├── editor.lua      ← telescope, snacks explorer, gitsigns
+        ├── coding.lua      ← treesitter, LSP servers
+        ├── comment.lua     ← gcc/gc commenting
+        └── ui.lua          ← disabled plugins (noice, bufferline, etc.)
+```
+
+---
+
+## Vim (legacy)
 
 Plugins are managed with [vim-plug](https://github.com/junegunn/vim-plug) (auto-installs on first launch). Symlink the vimrc:
 
@@ -145,45 +207,11 @@ Then install plugins:
 vim +PlugInstall +qall
 ```
 
-### Dependencies
-
-Install [ripgrep](https://github.com/BurntSushi/ripgrep) for the `:Rg` fzf command:
-
-```bash
-# Amazon Linux 2023 (binary install)
-curl -LO https://github.com/BurntSushi/ripgrep/releases/download/14.1.1/ripgrep-14.1.1-x86_64-unknown-linux-musl.tar.gz
-tar xzf ripgrep-14.1.1-x86_64-unknown-linux-musl.tar.gz
-sudo cp ripgrep-14.1.1-x86_64-unknown-linux-musl/rg /usr/local/bin/
-rm -rf ripgrep-14.1.1-x86_64-unknown-linux-musl*
-
-# macOS
-brew install ripgrep
-
-# Ubuntu / Debian
-sudo apt install -y ripgrep
-
-# Fedora / RHEL
-sudo dnf install -y ripgrep
-```
-
 ### fzf Key Bindings
 
 | Key | Command | Description |
 |-----|---------|-------------|
-| `Ctrl-p` | `:Files` | Fuzzy find files in current directory |
-| `Ctrl-f` | `:Rg` | Ripgrep across file contents |
+| `Ctrl-p` | `:GFiles` | Fuzzy find git-tracked files |
+| `Ctrl-f` | `:BLines` | Search lines in current buffer |
+| `\f` | `:Rg` | Ripgrep across file contents |
 | `\b` | `:Buffers` | Fuzzy switch between open buffers |
-
-Inside the fzf popup:
-- `Ctrl-j` / `Ctrl-k` — move down/up
-- `Enter` — select
-- `Esc` — cancel
-
-### Other Useful fzf Commands
-
-| Command | Description |
-|---------|-------------|
-| `:Lines` | Search lines in open buffers |
-| `:History` | Recently opened files |
-| `:GFiles` | Git-tracked files only |
-| `:Commits` | Browse git commits |

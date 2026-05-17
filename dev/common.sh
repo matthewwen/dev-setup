@@ -151,6 +151,21 @@ start_tmux_session() {
 }
 
 # ==============================================================================
+# tnotify - run a command and notify via tmux bell when done
+# ==============================================================================
+tnotify() {
+    "$@"
+    local ret=$?
+
+    if [ -n "$TMUX" ] && [[ "$1" != "claude" ]]; then
+        tmux display-message -p -t "$TMUX_PANE" '#{window_active}' | grep -q 0 \
+          && printf '\a' > "$(tmux display-message -p -t "$TMUX_PANE" '#{pane_tty}')"
+    fi
+
+    return $ret
+}
+
+# ==============================================================================
 # sync - rsync current directory to a remote SSH desktop
 # Usage: sync_command <host> [dest]
 # 

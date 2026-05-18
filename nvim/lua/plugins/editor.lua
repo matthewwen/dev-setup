@@ -1,11 +1,34 @@
 return {
-  -- Telescope: override LazyVim defaults with your preferred keymaps
+  -- Telescope: rg-powered search, C-t opens result in new tab
   {
     "nvim-telescope/telescope.nvim",
+    opts = {
+      defaults = {
+        vimgrep_arguments = {
+          "rg",
+          "--color=never",
+          "--no-heading",
+          "--with-filename",
+          "--line-number",
+          "--column",
+          "--smart-case",
+          "--hidden",
+          "--glob=!.git/",
+        },
+        mappings = {
+          i = {
+            ["<C-t>"] = "select_tab",
+          },
+          n = {
+            ["<C-t>"] = "select_tab",
+          },
+        },
+      },
+    },
     keys = {
       { "<C-p>", "<cmd>Telescope find_files<cr>", desc = "Find Files" },
       { "<C-f>", "<cmd>Telescope current_buffer_fuzzy_find<cr>", desc = "Buffer Lines" },
-      { "<leader>f", "<cmd>Telescope live_grep<cr>", desc = "Grep" },
+      { "<leader>f", "<cmd>Telescope live_grep<cr>", desc = "Grep (rg)" },
       { "<leader>b", "<cmd>Telescope buffers<cr>", desc = "Buffers" },
     },
   },

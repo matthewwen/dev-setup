@@ -1,0 +1,28 @@
+{
+  "Print to console": {
+    "prefix": "log",
+    "body": [
+      "console.log('$1');",
+      "$2"
+    ],
+    "description": "Log output to console"
+  },
+  "Test block": {
+    "prefix": "test",
+    "body": [
+      "test('$1', () => {",
+      "\t$0",
+      "});"
+    ],
+    "description": "Insert test block"
+  },
+  "Section Header JS": {
+    "prefix": "hdr",
+    "body": [
+      "// ==============================================================================",
+      "// ${1:Title}",
+      "// =============================================================================="
+    ],
+    "description": "Section header comment"
+  }
+}

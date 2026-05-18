@@ -4,6 +4,8 @@ if shell_path ~= "" then
   vim.env.PATH = shell_path
 end
 
+vim.g.lazyvim_tabstop = 4
+
 local opt = vim.opt
 
 opt.number = true

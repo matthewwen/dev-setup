@@ -1,0 +1,23 @@
+{
+  "name": "custom-snippets",
+  "contributes": {
+    "snippets": [
+      {
+        "language": ["javascript", "typescript", "javascriptreact", "typescriptreact"],
+        "path": "./javascript.json"
+      },
+      {
+        "language": ["python"],
+        "path": "./python.json"
+      },
+      {
+        "language": ["lua"],
+        "path": "./lua.json"
+      },
+      {
+        "language": ["bash", "sh", "zsh", "shellscript"],
+        "path": "./shell.json"
+      }
+    ]
+  }
+}

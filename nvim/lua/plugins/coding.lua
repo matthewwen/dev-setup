@@ -1,4 +1,16 @@
 return {
+  -- Force shfmt to use 4-space indent
+  {
+    "stevearc/conform.nvim",
+    opts = {
+      formatters = {
+        shfmt = {
+          prepend_args = { "-i", "4" },
+        },
+      },
+    },
+  },
+
   -- Treesitter: ensure common languages are installed
   {
     "nvim-treesitter/nvim-treesitter",

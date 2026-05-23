@@ -51,6 +51,12 @@ return {
               end,
             },
             win = {
+              input = {
+                keys = {
+                  ["<M-BS>"] = { "<c-s-w>", mode = { "i" }, expr = true, desc = "delete word" },
+                  ["<D-BS>"] = { "<c-u>", mode = { "i" }, desc = "delete line" },
+                },
+              },
               list = {
                 keys = {
                   ["t"] = "open_tab",

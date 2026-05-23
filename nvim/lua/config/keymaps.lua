@@ -51,6 +51,10 @@ map("n", "<C-Right>", "<cmd>vertical resize +2<cr>")
 map("v", "J", ":m '>+1<cr>gv=gv")
 map("v", "K", ":m '<-2<cr>gv=gv")
 
+-- Insert-mode deletion shortcuts
+map("i", "<M-BS>", "<C-w>")
+map("i", "<D-BS>", "<C-u>")
+
 -- Keep cursor centered
 map("n", "<C-d>", "<C-d>zz")
 map("n", "<C-u>", "<C-u>zz")

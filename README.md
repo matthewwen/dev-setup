@@ -20,7 +20,8 @@ dev-setup/
 │   ├── tmux.remote.conf← remote session overrides
 │   ├── yank.sh         ← clipboard helper (pbcopy/xclip/OSC52)
 │   ├── renew_env.sh    ← renew env vars in live panes
-│   └── claude-status.sh← Claude Code status line (context %)
+│   ├── claude-status.sh← Claude Code status line (context %)
+│   └── codex-status.sh ← Codex tmux status segment (context %)
 ├── ghostty/
 │   └── config          ← Ghostty terminal config
 │   └── renew_env.sh    ← renew env vars in live panes
@@ -80,6 +81,7 @@ ln -sf $(pwd)/tmux/tmux.conf ~/.tmux.conf
 ln -sf $(pwd)/tmux/yank.sh ~/.tmux/yank.sh
 ln -sf $(pwd)/tmux/renew_env.sh ~/.tmux/renew_env.sh
 ln -sf $(pwd)/tmux/tmux.remote.conf ~/.tmux/tmux.remote.conf
+ln -sf $(pwd)/tmux/codex-status.sh ~/.tmux/codex-status.sh
 ```
 
 ### Plugins

@@ -100,7 +100,7 @@ git-add-worktree() {
 
 git-rm-worktree() {
     local wt=${1}
-    shift 1;
+    shift 1
     git worktree remove .claude/worktrees/${wt} $@
 }
 
@@ -115,18 +115,18 @@ git-to-worktree() {
     )
     if [[ $did_commit -eq 0 ]]; then
         git reset HEAD~1
-        ( cd .claude/worktrees/${wt} && git reset HEAD~1 )
+        (cd .claude/worktrees/${wt} && git reset HEAD~1)
     fi
 }
 
 git-from-worktree() {
     local wt=${1}
-    ( cd .claude/worktrees/${wt} && _git-tmp-save )
+    (cd .claude/worktrees/${wt} && _git-tmp-save)
     local did_commit=$?
     git reset --hard ${wt}
     if [[ $did_commit -eq 0 ]]; then
         git reset HEAD~1
-        ( cd .claude/worktrees/${wt} && git reset HEAD~1 )
+        (cd .claude/worktrees/${wt} && git reset HEAD~1)
     fi
 }
 
@@ -166,7 +166,7 @@ tnotify() {
     fi
 
     if [ -n "$TMUX" ] && [[ "${1:-}" != "claude" ]]; then
-        printf '\a' > "$(tmux display-message -p -t "$TMUX_PANE" '#{pane_tty}')"
+        printf '\a' >"$(tmux display-message -p -t "$TMUX_PANE" '#{pane_tty}')"
     fi
 
     return $ret
@@ -186,20 +186,26 @@ _tnotify_preexec() {
 
 _tnotify_precmd() {
     [[ -z "$_tnotify_cmd_start" ]] && return
-    [[ -z "$TMUX" ]] && { unset _tnotify_cmd_start _tnotify_cmd_name; return; }
-    [[ "$TNOTIFY_THRESHOLD" -eq 0 ]] && { unset _tnotify_cmd_start _tnotify_cmd_name; return; }
+    [[ -z "$TMUX" ]] && {
+        unset _tnotify_cmd_start _tnotify_cmd_name
+        return
+    }
+    [[ "$TNOTIFY_THRESHOLD" -eq 0 ]] && {
+        unset _tnotify_cmd_start _tnotify_cmd_name
+        return
+    }
 
-    local elapsed=$(( EPOCHSECONDS - _tnotify_cmd_start ))
+    local elapsed=$((EPOCHSECONDS - _tnotify_cmd_start))
     unset _tnotify_cmd_start
 
     # Skip interactive commands that the user is already watching
     case "$_tnotify_cmd_name" in
-        vim|nvim|nano|less|more|man|top|htop|claude|ssh|tmux) return ;;
+    vim | nvim | nano | less | more | man | top | htop | claude | ssh | tmux) return ;;
     esac
     unset _tnotify_cmd_name
 
-    if (( elapsed >= TNOTIFY_THRESHOLD )); then
-        printf '\a' > "$(tmux display-message -p -t "$TMUX_PANE" '#{pane_tty}')"
+    if ((elapsed >= TNOTIFY_THRESHOLD)); then
+        printf '\a' >"$(tmux display-message -p -t "$TMUX_PANE" '#{pane_tty}')"
     fi
 }
 
@@ -210,7 +216,7 @@ add-zsh-hook precmd _tnotify_precmd
 # ==============================================================================
 # sync - rsync current directory to a remote SSH desktop
 # Usage: sync_command <host> [dest]
-# 
+#
 # for liv_sync, install fswatch via brew install fswatch
 # ==============================================================================
 sync_command() {
@@ -219,8 +225,8 @@ sync_command() {
     dest="${dest%/}"
 
     rm -rf ${USER}_git_log.txt ${USER}_git_status.txt
-    git log > ${USER}_git_log.txt
-    git status > ${USER}_git_status.txt
+    git log >${USER}_git_log.txt
+    git status >${USER}_git_status.txt
 
     rsync -av --progress --stats \
         --delete \
@@ -287,37 +293,45 @@ bye() {
 # work
 # ==============================================================================
 if [[ -z "$CUSTOM_WORK" ]]; then
+    parse_work_args() {
+        unset WORK_HOST
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+            --host)
+                WORK_HOST="$2"
+                shift 2
+                ;;
+            --port)
+                PORT="$2"
+                shift 2
+                ;;
+            *)
+                echo "Unknown option: $1"
+                return 1
+                ;;
+            esac
+        done
+        WORK_HOST=${WORK_HOST:-"clouddesk"}
+        _devsetuprc_set WORK_HOST "$WORK_HOST"
+    }
 
-parse_work_args() {
-    unset WORK_HOST
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-            --host) WORK_HOST="$2"; shift 2 ;;
-            --port) PORT="$2";      shift 2 ;;
-            *) echo "Unknown option: $1"; return 1 ;;
-        esac
-    done
-    WORK_HOST=${WORK_HOST:-"clouddesk"}
-    _devsetuprc_set WORK_HOST "$WORK_HOST"
-}
+    work() {
+        parse_work_args "$@"
+        start_tmux_session workspace
+    }
 
-work() {
-    cleanup
-    parse_work_args "$@"
-    start_tmux_session workspace 
-}
-
-_work_complete() {
-    case "$words[-2]" in
+    _work_complete() {
+        case "$words[-2]" in
         --host) compadd ssh-desktop ;;
         --port) compadd 8000 8001 8002 8003 8004 ;;
-        *)      compadd -- --host --port ;;
-    esac
-}
+        *) compadd -- --host --port ;;
+        esac
+    }
 
 fi
 
 compdef _work_complete work
+compdef _work_complete work-mr
 
 # ==============================================================================
 # autocomplete for work-* scripts in bin/setups/

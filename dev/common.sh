@@ -166,8 +166,9 @@ tnotify() {
     fi
 
     if [ -n "$TMUX" ] && [[ "${1:-}" != "claude" ]]; then
+        local target_pane="${TNOTIFY_TMUX_PANE:-${TMUX_PANE:-}}"
         local pane_tty
-        pane_tty=$(tmux display-message -p -t "$TMUX_PANE" '#{pane_tty}' 2>/dev/null) || pane_tty=
+        pane_tty=$(tmux display-message -p -t "$target_pane" '#{pane_tty}' 2>/dev/null) || pane_tty=
         [[ -n "$pane_tty" ]] && printf '\a' >"$pane_tty"
     fi
 
@@ -207,8 +208,9 @@ _tnotify_precmd() {
     unset _tnotify_cmd_name
 
     if ((elapsed >= TNOTIFY_THRESHOLD)); then
+        local target_pane="${TNOTIFY_TMUX_PANE:-${TMUX_PANE:-}}"
         local pane_tty
-        pane_tty=$(tmux display-message -p -t "$TMUX_PANE" '#{pane_tty}' 2>/dev/null) || pane_tty=
+        pane_tty=$(tmux display-message -p -t "$target_pane" '#{pane_tty}' 2>/dev/null) || pane_tty=
         [[ -n "$pane_tty" ]] && printf '\a' >"$pane_tty"
     fi
 }

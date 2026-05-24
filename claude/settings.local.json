@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(claude *)",
-      "Bash(vim --version)",
-      "Bash(tty *)"
-    ]
-  }
-}

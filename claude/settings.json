@@ -37,6 +37,17 @@
           }
         ]
       }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "command": "tmux display-message -p -t $TMUX_PANE '#{window_active}' | grep -q 0 && printf '\\a' > $(tmux display-message -p -t $TMUX_PANE '#{pane_tty}') || true",
+            "type": "command"
+          }
+        ]
+      }
     ]
   },
   "preferredNotifChannel": "auto",

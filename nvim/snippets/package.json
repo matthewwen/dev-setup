@@ -3,6 +3,10 @@
   "contributes": {
     "snippets": [
       {
+        "language": ["rust"],
+        "path": "./rust.json"
+      },
+      {
         "language": ["javascript", "typescript", "javascriptreact", "typescriptreact"],
         "path": "./javascript.json"
       },

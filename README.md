@@ -22,6 +22,8 @@ dev-setup/
 │   ├── renew_env.sh    ← renew env vars in live panes
 │   ├── claude-status.sh← Claude Code status line (context %)
 │   └── codex-status.sh ← Codex tmux status segment (context %)
+├── codex/
+│   └── hooks.json      ← Codex hooks (tnotify on Stop)
 ├── ghostty/
 │   └── config          ← Ghostty terminal config
 │   └── renew_env.sh    ← renew env vars in live panes
@@ -141,6 +143,16 @@ This displays a context window usage bar at the bottom of the Claude Code termin
 ```
 ctx: 42% ▰▰▰▰▱▱▱▱▱▱
 ```
+
+## Codex
+
+Symlink the Codex hooks config:
+```bash
+mkdir -p ~/.codex
+ln -sf $(pwd)/codex/hooks.json ~/.codex/hooks.json
+```
+
+The `Stop` hook calls `tnotify` after each Codex turn, which sends a tmux bell when Codex is waiting for your next response.
 
 ## Neovim (LazyVim)
 

@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "zsh -lc 'dev_setup=\"${DEV_SETUP:-}\"; [[ -f \"$dev_setup/dev/common.sh\" ]] || dev_setup=\"$HOME/workspaces/dev-setup\"; [[ -f \"$dev_setup/dev/common.sh\" ]] || exit 0; source \"$dev_setup/dev/common.sh\" && tnotify'",
+            "timeout": 5,
+            "statusMessage": "Sending tmux notification"
+          }
+        ]
+      }
+    ]
+  }
+}

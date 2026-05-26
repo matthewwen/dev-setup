@@ -39,7 +39,11 @@ _devsetuprc_set() {
     [[ -z "$val" ]] && return
     local rc="$HOME/.devsetuprc"
     export "$key=$val"
-    sed -i '' "s|^export ${key}=.*|export ${key}=\"${val}\"|" "$rc"
+    if grep -q "^${key}=" "$rc"; then
+        sed -i '' "s|^${key}=.*|${key}=${val}|" "$rc"
+    else
+        echo "${key}=${val}" >>"$rc"
+    fi
 }
 
 _common_completion() {

@@ -77,6 +77,11 @@ workspace() {
     tmux a -t workspace
 }
 
+hub() {
+    start_tmux_session "hub"
+    tmux a -t hub
+}
+
 alias vi=nvim
 alias vim=nvim
 
@@ -144,17 +149,32 @@ compdef _git_wt_completion git-rm-worktree git-to-worktree git-from-worktree
 # ==============================================================================
 # tmux
 # ==============================================================================
+start_tmux_target() {
+    session_name=$1
+    target=$2
+    shift 2
+    command="$@"
+    if tmux has-session -t $session_name 2>/dev/null; then
+        tmux new-window -t $session_name -n $target
+    else
+        tmux new-session -d -s $session_name -n $target
+    fi
+    if [[ -n $command ]]; then
+        tmux send-keys -t "${session_name}:${target}" "$command" "ENTER"
+    fi
+}
+
 start_tmux_session() {
     session_name=$1
-    shift
-    command="$@"
-    if [[ $session_name != "workspace" ]]; then
+    shift 1
+    if [[ $session_name != "workspace" || $session_name != "hub" ]]; then
         tmux kill-session -t $session_name 2>/dev/null
     fi
-    tmux new-session -d -s $session_name
-    if [[ -n $command ]]; then
-        tmux send-keys -t $session_name "$command" "ENTER"
-    fi
+    start_tmux_target $session_name $session_name "$@"
+}
+
+start_tmux_hub() {
+    start_tmux_target "hub" "$@"
 }
 
 # ==============================================================================

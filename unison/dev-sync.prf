@@ -3,9 +3,6 @@
 root = <local-path>
 root = ssh://<remote-host>/<remote-path>
 
-# VCS: Git repositories.
-ignore = Name .git
-
 # OS: macOS metadata.
 ignore = Name .DS_Store
 
@@ -66,7 +63,12 @@ ignore = Name *.log
 ignore = Name .coverage
 ignore = Name .coverage.*
 
-# Safer defaults for development sync.
-confirmbigdel = true
-fastcheck = true
+# Hands-off sync policy.
+auto = true
+copyonconflict = true
+confirmbigdel = false
+# Use full checks so same-size edits and timestamp quirks are not missed.
+fastcheck = false
+repeat = watch+3600
+prefer = newer
 times = true

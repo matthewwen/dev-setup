@@ -1,39 +1,36 @@
-# Unison
+# Unison Sync
 
-Bidirectional file sync between a local computer and a remote SSH server.
+Bidirectional file sync between a local machine and a remote SSH server.
 
-Unison must be installed on both machines. The local machine starts the sync, and
-the remote machine only needs SSH access plus a compatible `unison` binary.
+Unison runs from the local machine over SSH. The remote host does not need a
+profile, but it does need SSH access and a compatible `unison` binary. Watch
+mode also requires `unison-fsmonitor` on both machines.
 
-## Local Computer
+## Quick Start
 
-Install Unison:
+Install Unison on the local machine:
 
-```bash
+```sh
 brew install unison
 ```
 
-Confirm your local version:
+Verify the local tools:
 
-```bash
+```sh
+command -v unison
 unison -version
 ```
 
-Confirm SSH can reach the server:
+Verify SSH access to the remote host:
 
-```bash
+```sh
 ssh <remote-host>
 ```
 
-Create the local Unison config directory:
+Create the local profile:
 
-```bash
+```sh
 mkdir -p ~/.unison
-```
-
-Copy the profile template from this repo:
-
-```bash
 cp unison/dev-sync.prf ~/.unison/dev-sync.prf
 ```
 
@@ -43,77 +40,162 @@ Edit `~/.unison/dev-sync.prf` and replace:
 - `<remote-host>` with the SSH host alias or `user@host`.
 - `<remote-path>` with the absolute remote directory to sync.
 
+Create the remote directory:
+
+```sh
+ssh <remote-host> 'mkdir -p <remote-path>'
+```
+
 Run the first sync interactively:
 
-```bash
+```sh
 unison dev-sync
 ```
 
-After reviewing the proposed changes, press `g` to apply them.
+Review the proposed changes, then press `g` to apply them.
 
-For later syncs:
+## Remote Setup
 
-```bash
-unison dev-sync -auto
-```
-
-## Remote Server
-
-Install Unison with the server package manager.
+Install Unison on the remote host with the platform package manager.
 
 Ubuntu or Debian:
 
-```bash
+```sh
 sudo apt-get update
 sudo apt-get install unison
 ```
 
 Fedora:
 
-```bash
+```sh
 sudo dnf install unison
 ```
 
 Arch:
 
-```bash
+```sh
 sudo pacman -S unison
 ```
 
-Confirm the remote version:
+Verify the remote version:
 
-```bash
+```sh
+ssh <remote-host> 'command -v unison && unison -version'
+```
+
+The local and remote Unison versions should match. If sync fails with a protocol
+or archive-version error, install the same Unison version on both machines
+before debugging anything else.
+
+Check remote directory permissions:
+
+```sh
+ssh <remote-host> 'test -r <remote-path> && test -w <remote-path>'
+```
+
+## Watch Mode
+
+The included profile uses:
+
+```ini
+repeat = watch+3600
+```
+
+This runs event-driven sync when possible and performs a full rescan every hour.
+It requires `unison-fsmonitor` on both the local machine and the remote host.
+
+On macOS:
+
+```sh
+brew install unison
+cargo install unison-fsmonitor --locked
+command -v unison-fsmonitor
+```
+
+On Ubuntu or Debian, copy this repo to the remote host and run:
+
+```sh
+./install-ubuntu-fsmonitor.sh
+```
+
+The installer installs Unison, installs or updates Rust if needed, builds the
+Rust `unison-fsmonitor` helper, and places it in `/usr/local/bin`.
+
+If watch mode fails with this error:
+
+```text
+No file monitoring helper program found
+```
+
+confirm the helper is visible in the SSH session that Unison starts:
+
+```sh
+command -v unison-fsmonitor
+ssh <remote-host> 'command -v unison-fsmonitor'
+```
+
+If you do not need watch mode, change the profile to a polling interval:
+
+```ini
+repeat = 10
+```
+
+## Profile Behavior
+
+`dev-sync.prf` is configured for unattended development sync:
+
+```ini
+auto = true
+copyonconflict = true
+confirmbigdel = false
+fastcheck = false
+prefer = newer
+times = true
+```
+
+This means Unison applies non-conflicting changes automatically, keeps a copy of
+the overwritten side on conflict, allows large deletes without prompting, uses
+full file checks, prefers the newer file when resolving conflicts, and preserves
+modification times.
+
+The profile ignores common generated and local-only files, including:
+
+- macOS metadata: `.DS_Store`
+- Vim artifacts: `*.swp`, `*.swo`, `*.swn`, `*~`, `.netrwhist`, `Session.vim`
+- JetBrains metadata: `.idea`, `*.iml`
+- Python environments and caches: `.hatch`, `.venv`, `venv`, `env`,
+  `.mypy_cache`, `.pytest_cache`, `.ruff_cache`, `.tox`, `__pycache__`
+- Python compiled files and packaging outputs: `*.pyc`, `*.pyo`, `*.pyd`,
+  `*.egg-info`, `.eggs`, `pip-wheel-metadata`
+- Node dependencies: `node_modules`
+- Build and coverage outputs: `build`, `dist`, `out`, `site`, `htmlcov`,
+  `target`, `.coverage`, `.coverage.*`
+- Logs: `logs`, `log`, `*.log`
+
+## Troubleshooting
+
+If Unison cannot connect, confirm plain SSH works first:
+
+```sh
+ssh <remote-host>
+```
+
+If Unison reports a version or archive mismatch, compare both versions:
+
+```sh
 unison -version
+ssh <remote-host> 'unison -version'
 ```
 
-The local and remote Unison versions should match closely. If sync fails with a
-protocol or archive-version error, install the same Unison version on both
-machines.
+If file changes are not noticed in watch mode, check `unison-fsmonitor` on both
+machines and make sure `/usr/local/bin` is on the remote non-interactive SSH
+`PATH`.
 
-Create the remote sync directory if it does not exist:
+For large trees on Linux, the default inotify limits may be too low. The Ubuntu
+installer can raise them:
 
-```bash
-mkdir -p <remote-path>
+```sh
+UPDATE_WATCH_LIMITS=1 ./install-ubuntu-fsmonitor.sh
 ```
 
-Make sure the SSH user can read and write that directory:
-
-```bash
-test -r <remote-path> && test -w <remote-path>
-```
-
-No Unison profile is required on the remote server for the SSH workflow above.
-The local profile tells Unison which remote path to use.
-
-## Notes
-
-- Start with a small directory or a clean test folder before syncing important
-  work.
-- The template ignores common dependency, Python cache, packaging, and build
-  outputs such as `.hatch`, `.venv`, `env`, `__pycache__`, `*.pyc`,
-  `*.egg-info`, `node_modules`, `build`, `dist`, `out`, `logs`, and `target`.
-- The template also ignores local editor metadata from Vim and JetBrains IDEs,
-  including swap files, `.netrwhist`, `.idea`, and `*.iml`.
-- If a file changed on both machines, Unison will ask you to choose which side
-  wins.
-- Unison is bidirectional. Use `rsync` instead if you only want one-way copying.
+Unison is bidirectional. Use `rsync` instead if you only want one-way copying.

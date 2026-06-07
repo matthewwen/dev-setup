@@ -1,0 +1,27 @@
+// ============================================================================
+// Favorite Vscode Settings
+//
+// DO NOT just copy and paste! Just ensure that the terminal opens tmux
+// when you open the terminal
+// ============================================================================
+{
+  "terminal.integrated.inheritEnv": false,
+  "update.mode": "none",
+  "window.zoomLevel": 2,
+  "editor.fontLigatures": false,
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "never"
+  },
+  "workbench.settings.enableNaturalLanguageSearch": false,
+  "workbench.commandPalette.experimental.enableNaturalLanguageSearch": false,
+  "git.blame.editorDecoration.enabled": true,
+  "git.openRepositoryInParentFolders": "always",
+  "explorer.fileNesting.enabled": true,
+  "terminal.integrated.defaultProfile.osx": "tmux",
+  "terminal.integrated.profiles.osx": {
+    "tmux": {
+      "path": "tmux",
+      "args": ["new-session", "-A", "-s", "workspace"]
+    }
+  }
+}

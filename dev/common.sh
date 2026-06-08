@@ -155,7 +155,9 @@ start_tmux_target() {
     shift 2
     command="$@"
     if tmux has-session -t $session_name 2>/dev/null; then
-        tmux new-window -t $session_name -n $target
+        if [[ -n $command ]]; then
+            tmux new-window -t $session_name -n $target
+        fi
     else
         tmux new-session -d -s $session_name -n $target
     fi
@@ -167,7 +169,7 @@ start_tmux_target() {
 start_tmux_session() {
     session_name=$1
     shift 1
-    if [[ $session_name != "workspace" || $session_name != "hub" ]]; then
+    if [[ $session_name != "workspace" && $session_name != "hub" ]]; then
         tmux kill-session -t $session_name 2>/dev/null
     fi
     start_tmux_target $session_name $session_name "$@"

@@ -375,7 +375,7 @@ fi
 for script in $DEV_SETUP/bin/setups/work-*; do
     local base=$(basename $script)
     eval "_${base//-/_}_complete() {
-        local funcs=(\$(grep -E '^[a-zA-Z_][a-zA-Z0-9_-]*[[:space:]]*\(\)' "$script" | awk -F'(' '{print \$1}'))
+        local funcs=(\$(grep -E '^[a-zA-Z_][a-zA-Z0-9_-]*[[:space:]]*\(\)' "$script" | awk -F'(' '{print \$1}' | grep -v '^_'))
         compadd \$funcs
     }
     "

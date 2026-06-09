@@ -4,6 +4,8 @@
 
 keybind = global:ctrl+space=toggle_quick_terminal
 quick-terminal-position = top
+quick-terminal-space-behavior = remain
+quick-terminal-screen = macos-menu-bar
 quick-terminal-size = 70%,90%
 quit-after-last-window-closed = false
 initial-window = false

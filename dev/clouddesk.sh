@@ -23,6 +23,11 @@ bye() {
     tmux detach
 }
 
+start_tmux_hub() {
+    start_tmux_target "workspace" "$@"
+}
+
+alias hub=workspace
 alias code="echo remote server has no vscode pop up"
 
 # ==============================================================================

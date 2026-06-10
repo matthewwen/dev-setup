@@ -27,8 +27,13 @@ start_tmux_hub() {
     start_tmux_target "workspace" "$@"
 }
 
-alias hub=workspace
-alias code="echo remote server has no vscode pop up"
+hub() {
+    workspace
+}
+
+code() {
+    echo "remote server has no vscode pop up"
+}
 
 # ==============================================================================
 # Terminal colours

@@ -14,6 +14,10 @@ return {
           "--smart-case",
           "--hidden",
           "--glob=!.git/",
+          "--glob=!.claude/worktrees/",
+        },
+        file_ignore_patterns = {
+          "%.claude/worktrees/",
         },
         mappings = {
           i = {
@@ -26,7 +30,7 @@ return {
       },
     },
     keys = {
-      { "<C-p>", "<cmd>Telescope find_files<cr>", desc = "Find Files" },
+      { "<C-p>", "<cmd>Telescope find_files hidden=true<cr>", desc = "Find Files" },
       { "<C-f>", "<cmd>Telescope current_buffer_fuzzy_find<cr>", desc = "Buffer Lines" },
       { "<leader>f", "<cmd>Telescope live_grep<cr>", desc = "Grep (rg)" },
       { "<leader>b", "<cmd>Telescope buffers<cr>", desc = "Buffers" },
@@ -40,8 +44,12 @@ return {
     "folke/snacks.nvim",
     opts = {
       picker = {
+        hidden = true,
+        exclude = { ".claude/worktrees" },
         sources = {
           explorer = {
+            hidden = true,
+            exclude = { ".claude/worktrees" },
             actions = {
               open_tab = function(picker, item)
                 if item and item.file and not item.dir then

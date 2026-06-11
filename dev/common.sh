@@ -82,6 +82,11 @@ hub() {
     tmux a -t hub
 }
 
+tmp() {
+    start_tmux_session "local" mr
+    tmux a -t local
+}
+
 remote-hub() {
     local hub_name="$1"
     start_tmux_session $hub_name ssh $WORK_HOST

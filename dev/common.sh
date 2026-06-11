@@ -82,6 +82,12 @@ hub() {
     tmux a -t hub
 }
 
+remote-hub() {
+    local hub_name="$1"
+    start_tmux_session $hub_name ssh -t $WORK_HOST "tmux new-session -A -s $hub_name"
+    tmux a -t $hub_name
+}
+
 alias vi=nvim
 alias vim=nvim
 

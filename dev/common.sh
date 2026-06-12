@@ -84,7 +84,7 @@ hub() {
 
 remote-hub() {
     local hub_name="$1"
-    start_tmux_session $hub_name ssh -t $WORK_HOST "tmux new-session -A -s $hub_name"
+    start_tmux_session $hub_name ssh -t $WORK_HOST "exec tmux new-session -A -s $hub_name"
     tmux a -t $hub_name
 }
 
@@ -162,7 +162,7 @@ start_tmux_target() {
     command="$@"
     if tmux has-session -t $session_name 2>/dev/null; then
         if [[ -n $command ]]; then
-            tmux new-window -t $session_name -n $target
+            tmux new-window -a -t $session_name -n $target
         fi
     else
         tmux new-session -d -s $session_name -n $target

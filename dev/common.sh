@@ -84,7 +84,7 @@ hub() {
 
 remote-hub() {
     local hub_name="$1"
-    start_tmux_session $hub_name ssh -t $WORK_HOST "exec tmux new-session -A -s $hub_name"
+    start_tmux_session $hub_name ssh $WORK_HOST
     tmux a -t $hub_name
 }
 
@@ -122,15 +122,17 @@ git-rm-worktree() {
 git-to-worktree() {
     local wt=${1}
     local branch=$(_mw-git-branch)
+    local wt_dir=.claude/worktrees/${wt}
     _git-tmp-save
     local did_commit=$?
     (
-        cd .claude/worktrees/${wt}
+        [[ ! -d $wt_dir ]] && git-add-worktree $wt
+        cd $wt_dir
         git reset --hard ${branch}
     )
     if [[ $did_commit -eq 0 ]]; then
         git reset HEAD~1
-        (cd .claude/worktrees/${wt} && git reset HEAD~1)
+        (cd $wt_dir && git reset HEAD~1)
     fi
 }
 
@@ -421,3 +423,4 @@ mr_path() {
 }
 
 compdef _mr_completion mr_path
+# vim: sw=4

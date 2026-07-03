@@ -18,7 +18,15 @@ sql_quote() {
   printf "%s" "$1" | sed "s/'/''/g"
 }
 
-active_cmd=$(tmux display-message -p '#{pane_current_command}' 2>/dev/null || true)
+# Resolve against the pane the status line is rendering for. tmux expands
+# #{pane_id} before invoking us, so $1 is the correct target pane. Without it,
+# display-message resolves to some client's active pane, which is wrong when
+# multiple clients/sessions are attached (e.g. nested local+remote).
+target_pane="${1:-}"
+tflag=()
+[ -n "$target_pane" ] && tflag=(-t "$target_pane")
+
+active_cmd=$(tmux display-message "${tflag[@]}" -p '#{pane_current_command}' 2>/dev/null || true)
 case "$active_cmd" in
   codex|node) ;;
   *) exit 0 ;;
@@ -27,7 +35,7 @@ esac
 [ -r "$state_db" ] || exit 0
 [ -r "$log_file" ] || exit 0
 
-cwd=$(tmux display-message -p '#{pane_current_path}' 2>/dev/null || true)
+cwd=$(tmux display-message "${tflag[@]}" -p '#{pane_current_path}' 2>/dev/null || true)
 thread_row=""
 if [ -n "$cwd" ]; then
   cwd_sql=$(sql_quote "$cwd")

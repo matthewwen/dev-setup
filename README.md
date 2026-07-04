@@ -41,11 +41,15 @@ Add to your `.zshrc`:
 source ~/**/dev-setup/dev/common.sh
 ```
 
-Set your workspace paths in `common.sh`:
+Set your workspace paths (in `.zshrc`, before sourcing):
 ```zsh
-export DEV_WS="$HOME/workspaces/"           # multi-package workspace
-export MR_WS="$HOME/workspaces/MonoRepo"    # mono repo
+export DEV_WS="$HOME/workspaces/"              # multi-package workspace
+export MR_WS="$HOME/workspaces/MyScripts"      # YOUR mono repo — your work scripts live here
+export PATH="$MR_WS/bin/setups:$PATH"          # make your work scripts bare-runnable
 ```
+
+`dev-setup` is the shared substrate you *source*. Your own work scripts belong
+in your `$MR_WS` repo — never add personal scripts to this repo.
 
 ## Commands
 
@@ -61,14 +65,16 @@ export MR_WS="$HOME/workspaces/MonoRepo"    # mono repo
 
 ## Work Scripts
 
-Copy `bin/setups/work-example` and customize it for your project:
+This repo ships `bin/setups/work-example` as a template only. Copy it into
+**your own** `$MR_WS/bin/setups/` and customize it per project:
 
 ```zsh
-./bin/setups/work-example          # runs setup() by default
-./bin/setups/work-example <fn>     # call any function directly
+cp bin/setups/work-example "$MR_WS/bin/setups/work-myproject"
+work-myproject           # runs setup() by default
+work-myproject <fn>      # call any function directly
 ```
 
-Each work script sources `common.sh` and defines a `setup()` that calls `work` + `sync_command` for the relevant packages.
+Each work script sources `common.sh` and defines a `setup()` that calls `work` + `sync_command` for the relevant packages. With `$MR_WS/bin/setups` on `PATH`, they're runnable as bare commands.
 
 ## Tmux
 

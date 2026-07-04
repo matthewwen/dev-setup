@@ -159,6 +159,10 @@ _git_wt_completion() {
 }
 compdef _git_wt_completion git-rm-worktree git-to-worktree git-from-worktree
 
+git-set-commit-today() {
+    GIT_COMMITTER_DATE="$(date)" git commit --amend --no-edit --date "now"
+}
+
 # ==============================================================================
 # tmux
 # ==============================================================================

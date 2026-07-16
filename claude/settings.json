@@ -11,7 +11,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ -n \"$TMUX_PANE\" ] && [ \"$(tmux display-message -p -t \"$TMUX_PANE\" '#{window_active}')\" = 0 ] && printf '\\a' > \"$(tmux display-message -p -t \"$TMUX_PANE\" '#{pane_tty}')\" || true"
+            "command": "bash ~/.tmux/claude-bell.sh"
           }
         ]
       }
@@ -43,7 +43,7 @@
         "matcher": "",
         "hooks": [
           {
-            "command": "[ -n \"$TMUX_PANE\" ] && [ \"$(tmux display-message -p -t \"$TMUX_PANE\" '#{window_active}')\" = 0 ] && printf '\\a' > \"$(tmux display-message -p -t \"$TMUX_PANE\" '#{pane_tty}')\" || true",
+            "command": "bash ~/.tmux/claude-bell.sh",
             "type": "command"
           }
         ]

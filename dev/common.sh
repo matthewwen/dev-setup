@@ -385,12 +385,26 @@ compdef _work_complete work-mr
 
 # ==============================================================================
 # autocomplete for work-* scripts in bin/setups/
+#
+# DEV_SETUP_HOME is this repo (the one that holds common.sh). DEV_SETUP is your
+# own scripts repo, and defaults to this repo. `edit` creates new scripts under
+# DEV_SETUP_HOME, and opens existing scripts from either repo.
 # ==============================================================================
+DEV_SETUP_HOME=${${(%):-%x}:A:h:h}
 if [[ -z ${DEV_SETUP} ]]; then
-    COMMON_PATH=$(dirname $0)
-    DEV_SETUP=$(realpath $COMMON_PATH/..)
+    DEV_SETUP=$DEV_SETUP_HOME
 fi
-for script in $DEV_SETUP/bin/setups/work-*; do
+
+WORK_SCRIPT_DIRS=()
+[[ "$DEV_SETUP" != "$DEV_SETUP_HOME" ]] && WORK_SCRIPT_DIRS+=("$DEV_SETUP/bin/setups")
+WORK_SCRIPT_DIRS+=("$DEV_SETUP_HOME/bin/setups")
+
+if [[ ":$PATH:" != *":$DEV_SETUP_HOME/bin/setups:"* ]]; then
+    export PATH="$PATH:$DEV_SETUP_HOME/bin/setups"
+fi
+
+_register_work_completion() {
+    local script=$1
     local base=$(basename $script)
     eval "_${base//-/_}_complete() {
         local funcs=(\$(grep -E '^[a-zA-Z_][a-zA-Z0-9_-]*[[:space:]]*\(\)' "$script" | awk -F'(' '{print \$1}' | grep -v '^_'))
@@ -398,20 +412,83 @@ for script in $DEV_SETUP/bin/setups/work-*; do
     }
     "
     compdef "_${base//-/_}_complete" "$base"
+}
+
+for script in ${^WORK_SCRIPT_DIRS}/work-*(N); do
+    _register_work_completion $script
 done
 
 _edit_completion() {
     local -a scripts
-    scripts=($DEV_SETUP/bin/setups/*(:t))
+    scripts=(${^WORK_SCRIPT_DIRS}/*(N:t))
+    scripts=(${(u)scripts})
     _describe 'work scripts' scripts
 }
 
+# ==============================================================================
+# work script scaffolding
+# `edit work-hello` opens the script. If it does not exist, create it in
+# $DEV_SETUP_HOME/bin/setups, make it executable, and register its completion.
+# ==============================================================================
+_work_script_template() {
+    cat <<'EOF'
+#!/usr/bin/env zsh
+source $(dirname $0)/../../dev/common.sh
+
+export PYTHONPATH=${PYTHONPATH}
+
+# ==============================================================================
+# Add one function per task. Call them as: <script> <function> [args...]
+# ==============================================================================
+hello() {
+    echo "hello from ${ZSH_ARGZERO:t} in $(pwd -L)"
+}
+
+setup() {
+    echo "setup work script"
+}
+
+if [ -z $1 ]; then
+    setup
+else
+    $@
+fi
+EOF
+}
+
+_ensure_work_script() {
+    local name="$1"
+    if [[ -z "$name" ]]; then
+        echo "usage: edit <work-script>" >&2
+        return 1
+    fi
+    local dir
+    for dir in $WORK_SCRIPT_DIRS; do
+        if [[ -e "$dir/$name" ]]; then
+            print -r -- "$dir/$name"
+            return 0
+        fi
+    done
+    local target="$DEV_SETUP_HOME/bin/setups/$name"
+    mkdir -p "$DEV_SETUP_HOME/bin/setups"
+    _work_script_template >"$target"
+    chmod +x "$target"
+    _register_work_completion "$target"
+    rehash
+    echo "created $target  (run: $name hello)" >&2
+    print -r -- "$target"
+}
+
 edit() {
-    vi $DEV_SETUP/bin/setups/$1
+    local target
+    target=$(_ensure_work_script "$1") || return 1
+    vi "$target"
 }
 
 edit-vscode() {
-    code $DEV_SETUP/bin/setups/$1
+    local target
+    target=$(_ensure_work_script "$1") || return 1
+    code "$target"
 }
 
 compdef _edit_completion edit

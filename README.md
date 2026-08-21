@@ -31,7 +31,8 @@ dev-setup/
 │   ├── README.md       ← local/remote Unison setup instructions
 │   └── dev-sync.prf    ← example Unison sync profile
 └── bin/setups/
-    └── work-example    ← example work script, copy and customize
+    ├── work-example    ← example work script, copy and customize
+    └── ...             ← scripts created by `edit`, added to PATH
 ```
 
 ## Setup
@@ -48,9 +49,6 @@ export MR_WS="$HOME/workspaces/MyScripts"      # YOUR mono repo — your work sc
 export PATH="$MR_WS/bin/setups:$PATH"          # make your work scripts bare-runnable
 ```
 
-`dev-setup` is the shared substrate you *source*. Your own work scripts belong
-in your `$MR_WS` repo — never add personal scripts to this repo.
-
 ## Commands
 
 | Command | Description |
@@ -62,6 +60,7 @@ in your `$MR_WS` repo — never add personal scripts to this repo.
 | `work [--host <host>]` | open workspace/terminal/ssh tmux sessions |
 | `cleanup` | kill all dev tmux sessions |
 | `bye` | cleanup + kill tmux server |
+| `edit <work-script>` | edit a work script; creates it in `bin/setups` if absent |
 
 ## Work Scripts
 
@@ -75,6 +74,50 @@ work-myproject <fn>      # call any function directly
 ```
 
 Each work script sources `common.sh` and defines a `setup()` that calls `work` + `sync_command` for the relevant packages. With `$MR_WS/bin/setups` on `PATH`, they're runnable as bare commands.
+
+### Scaffold a new work script
+
+`edit` opens a work script. If the script does not exist, `edit` creates it from
+a template, makes it executable, and registers its tab-completion:
+
+```zsh
+edit work-hello          # creates bin/setups/work-hello in THIS repo, then opens it
+work-hello hello         # runnable immediately — no new shell needed
+work-hello               # no args runs setup()
+```
+
+`edit` never overwrites an existing script. It searches `$DEV_SETUP/bin/setups`
+first, then this repo, and opens the first match. Use `edit-vscode` to open in
+VS Code.
+
+The generated script sources `$(dirname $0)/../../dev/common.sh`, exports
+`PYTHONPATH`, and defines a placeholder `setup()`:
+
+```zsh
+#!/usr/bin/env zsh
+source $(dirname $0)/../../dev/common.sh
+
+export PYTHONPATH=${PYTHONPATH}
+
+hello() {
+    echo "hello from ${ZSH_ARGZERO:t} in $(pwd -L)"
+}
+
+setup() {
+    echo "setup work script"
+}
+
+if [ -z $1 ]; then
+    setup
+else
+    $@
+fi
+```
+
+`DEV_WS`, `MR_WS`, and `CUSTOM_WORK` reach the script through the environment,
+because your shell exports them. A script launched from a shell that never
+sourced your setup (cron, for example) sees them empty, so `ws`/`mr` will not
+resolve there.
 
 ## Tmux
 

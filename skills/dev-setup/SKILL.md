@@ -103,13 +103,17 @@ repo's `work-example` into `$MR_WS/bin/setups/` and customize it (see below).
 - Completion for these is wired to the worktree dir names.
 
 **Editing work scripts:**
-- `edit <script>` / `edit-vscode <script>` — open a file from
-  `$DEV_SETUP/bin/setups/` in nvim / VS Code (tab-completes the script names).
+- `edit <script>` / `edit-vscode <script>` — open a work script in nvim / VS Code
+  (tab-completes the script names). Resolution order is `$DEV_SETUP/bin/setups/`
+  then `$DEV_SETUP_HOME/bin/setups/`. If the script exists in neither, `edit`
+  creates it in `$DEV_SETUP_HOME/bin/setups/` from a template and `chmod +x` it.
+  `$DEV_SETUP_HOME` is this repo, auto-detected from the path of `common.sh`, and
+  `common.sh` appends its `bin/setups` to `PATH` so new scripts run immediately.
 - `ws_path [pkg]` / `mr_path [dir]` — like `ws`/`mr` but *echo* the resolved
   path instead of cd'ing (for `$(ws_path pkg)` command substitution).
 
 **Auto-completion for `work-*` scripts:** on source, `common.sh` loops over
-`$DEV_SETUP/bin/setups/work-*` and, for each, generates a `compdef` that greps
+`work-*` in both setup dirs and, for each, generates a `compdef` that greps
 the script's top-level `func()` definitions (skipping `_`-prefixed ones) so
 `work-myproject <TAB>` completes its subcommands. This is why any function you
 add to a work script is completable with no extra wiring.

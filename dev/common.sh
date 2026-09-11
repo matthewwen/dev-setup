@@ -82,6 +82,10 @@ hub() {
     tmux a -t hub
 }
 
+agent() {
+    tmux a -t agent
+}
+
 tmp() {
     start_tmux_session "local" mr
     tmux a -t local

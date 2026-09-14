@@ -72,6 +72,20 @@ _mr_completion() {
 
 compdef _mr_completion mr
 
+ws_path() {
+    ws $1
+    pwd -L
+}
+
+compdef _ws_completion ws_path
+
+mr_path() {
+    mr $1
+    pwd -L
+}
+
+compdef _mr_completion mr_path
+
 workspace() {
     start_tmux_session "workspace"
     tmux a -t workspace
@@ -394,7 +408,7 @@ compdef _work_complete work-mr
 # own scripts repo, and defaults to this repo. `edit` creates new scripts under
 # DEV_SETUP_HOME, and opens existing scripts from either repo.
 # ==============================================================================
-DEV_SETUP_HOME=${${(%):-%x}:A:h:h}
+DEV_SETUP_HOME=$(mr_path)
 if [[ -z ${DEV_SETUP} ]]; then
     DEV_SETUP=$DEV_SETUP_HOME
 fi
@@ -457,6 +471,8 @@ if [ -z $1 ]; then
 else
     $@
 fi
+
+# vim: filetype=sh sw=4
 EOF
 }
 
@@ -498,20 +514,122 @@ edit-vscode() {
 compdef _edit_completion edit
 compdef _edit_completion edit-vscode
 
-# ==============================================================================
-# get path of pkg / mono repo
-# ==============================================================================
-ws_path() {
-    ws $1
-    pwd -L
+# ##########################################################################
+# COLORS - colored echo helpers
+#
+# echo_red / echo_green / echo_orange / ... one line, any color.
+# Run `echo_palette` to print every helper in its own color.
+# Generic: echo_256 208 msg | echo_rgb 255 105 180 msg | echo_style '1;4;31' msg
+# ##########################################################################
+
+# Color is dropped when stdout is not a terminal or NO_COLOR is set.
+# Set FORCE_COLOR to keep color through a pipe, e.g. for `less -R`.
+_echo_color() {
+    local code="$1"
+    shift
+    if { [ -t 1 ] || [ -n "$FORCE_COLOR" ]; } && [ -z "$NO_COLOR" ]; then
+        printf '\033[%sm%s\033[0m\n' "$code" "$*"
+    else
+        printf '%s\n' "$*"
+    fi
 }
 
-compdef _ws_completion ws_path
+# --- generic: any SGR code, any 256-color index, any 24-bit rgb ------------
+echo_style() { _echo_color "$@"; }                                    # echo_style '1;4;31' msg
+echo_256() { local n="$1"; shift; _echo_color "38;5;$n" "$@"; }        # echo_256 208 msg
+echo_bg256() { local n="$1"; shift; _echo_color "48;5;$n" "$@"; }      # echo_bg256 22 msg
+echo_rgb() { local r="$1" g="$2" b="$3"; shift 3; _echo_color "38;2;$r;$g;$b" "$@"; }
+echo_bgrgb() { local r="$1" g="$2" b="$3"; shift 3; _echo_color "48;2;$r;$g;$b" "$@"; }
 
-mr_path() {
-    mr $1
-    pwd -L
+# --- the 8 standard colors ------------------------------------------------
+echo_black() { _echo_color '0;30' "$@"; }
+echo_red() { _echo_color '0;31' "$@"; }
+echo_green() { _echo_color '0;32' "$@"; }
+echo_yellow() { _echo_color '0;33' "$@"; }
+echo_blue() { _echo_color '0;34' "$@"; }
+echo_magenta() { _echo_color '0;35' "$@"; }
+echo_cyan() { _echo_color '0;36' "$@"; }
+echo_white() { _echo_color '0;37' "$@"; }
+
+# --- the 8 bright colors --------------------------------------------------
+echo_bright_black() { _echo_color '0;90' "$@"; }
+echo_bright_red() { _echo_color '0;91' "$@"; }
+echo_bright_green() { _echo_color '0;92' "$@"; }
+echo_bright_yellow() { _echo_color '0;93' "$@"; }
+echo_bright_blue() { _echo_color '0;94' "$@"; }
+echo_bright_magenta() { _echo_color '0;95' "$@"; }
+echo_bright_cyan() { _echo_color '0;96' "$@"; }
+echo_bright_white() { _echo_color '0;97' "$@"; }
+echo_gray() { _echo_color '0;90' "$@"; }
+echo_grey() { _echo_color '0;90' "$@"; }
+
+# --- extended named colors (256-color palette) ----------------------------
+echo_orange() { _echo_color '38;5;208' "$@"; }
+echo_amber() { _echo_color '38;5;214' "$@"; }
+echo_gold() { _echo_color '38;5;220' "$@"; }
+echo_peach() { _echo_color '38;5;216' "$@"; }
+echo_salmon() { _echo_color '38;5;209' "$@"; }
+echo_coral() { _echo_color '38;5;203' "$@"; }
+echo_crimson() { _echo_color '38;5;160' "$@"; }
+echo_maroon() { _echo_color '38;5;88' "$@"; }
+echo_brown() { _echo_color '38;5;130' "$@"; }
+echo_tan() { _echo_color '38;5;180' "$@"; }
+echo_khaki() { _echo_color '38;5;143' "$@"; }
+echo_olive() { _echo_color '38;5;100' "$@"; }
+echo_lime() { _echo_color '38;5;118' "$@"; }
+echo_chartreuse() { _echo_color '38;5;82' "$@"; }
+echo_forest() { _echo_color '38;5;28' "$@"; }
+echo_mint() { _echo_color '38;5;121' "$@"; }
+echo_teal() { _echo_color '38;5;30' "$@"; }
+echo_turquoise() { _echo_color '38;5;44' "$@"; }
+echo_aqua() { _echo_color '38;5;51' "$@"; }
+echo_sky() { _echo_color '38;5;117' "$@"; }
+echo_azure() { _echo_color '38;5;33' "$@"; }
+echo_steel() { _echo_color '38;5;67' "$@"; }
+echo_slate() { _echo_color '38;5;103' "$@"; }
+echo_navy() { _echo_color '38;5;18' "$@"; }
+echo_indigo() { _echo_color '38;5;54' "$@"; }
+echo_violet() { _echo_color '38;5;99' "$@"; }
+echo_purple() { _echo_color '38;5;141' "$@"; }
+echo_lavender() { _echo_color '38;5;183' "$@"; }
+echo_plum() { _echo_color '38;5;96' "$@"; }
+echo_orchid() { _echo_color '38;5;170' "$@"; }
+echo_pink() { _echo_color '38;5;205' "$@"; }
+echo_rose() { _echo_color '38;5;211' "$@"; }
+echo_hotpink() { _echo_color '38;5;198' "$@"; }
+echo_silver() { _echo_color '38;5;250' "$@"; }
+echo_charcoal() { _echo_color '38;5;238' "$@"; }
+
+# --- text styles ----------------------------------------------------------
+echo_bold() { _echo_color '1' "$@"; }
+echo_dim() { _echo_color '2' "$@"; }
+echo_italic() { _echo_color '3' "$@"; }
+echo_underline() { _echo_color '4' "$@"; }
+echo_blink() { _echo_color '5' "$@"; }
+echo_reverse() { _echo_color '7' "$@"; }
+echo_strike() { _echo_color '9' "$@"; }
+
+# --- semantic wrappers ----------------------------------------------------
+echo_err() { _echo_color '0;31' "$@" >&2; }
+echo_warn() { _echo_color '38;5;208' "$@" >&2; }
+echo_ok() { _echo_color '0;32' "$@"; }
+echo_info() { _echo_color '0;36' "$@"; }
+echo_debug() { _echo_color '0;90' "$@"; }
+echo_header() { _echo_color '1;4;36' "$@"; }
+
+# print every named helper in its own color
+echo_palette() {
+    local name
+    for name in black red green yellow blue magenta cyan white \
+        bright_black bright_red bright_green bright_yellow \
+        bright_blue bright_magenta bright_cyan bright_white gray \
+        orange amber gold peach salmon coral crimson maroon brown tan \
+        khaki olive lime chartreuse forest mint teal turquoise aqua sky \
+        azure steel slate navy indigo violet purple lavender plum orchid \
+        pink rose hotpink silver charcoal \
+        bold dim italic underline blink reverse strike; do
+        "echo_$name" "echo_$name"
+    done
 }
 
-compdef _mr_completion mr_path
 # vim: sw=4

@@ -1,0 +1,13 @@
+[Unit]
+Description=nginx file explorer API
+After=network.target
+
+[Service]
+Type=simple
+Environment=EXPLORER_EDIT_TOKEN_FILE=%h/.config/nginx-explorer/edit-token
+ExecStart=@BASE_DIR@/scripts/explorer.sh run
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target

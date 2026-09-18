@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<!--
+  Markdown viewer shim served by /etc/nginx/md.conf.
+  nginx rewrites any request for *.md to this page. The page fetches the same
+  path with ?raw=1 and renders it. No network access and no third-party code.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Markdown</title>
+<script>
+  // Set the theme before first paint so the page never flashes the wrong one.
+  document.documentElement.dataset.theme = localStorage.getItem("md-theme") ||
+    (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+</script>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='14'>&#128209;</text></svg>">
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --bg-soft: #f6f8fa;
+  --bg-inset: #f0f3f6;
+  --fg: #1f2328;
+  --fg-muted: #636c76;
+  --border: #d7dde3;
+  --link: #0a58ca;
+  --accent: #8250df;
+  --quote: #57606a;
+  --code-str: #0a7d36;
+  --code-kw: #a626a4;
+  --code-num: #b1560f;
+  --code-com: #7b838b;
+  --add: #1a7f37;
+  --del: #cf222e;
+  --shadow: 0 1px 3px rgba(27, 31, 36, .08);
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+html[data-theme="dark"] {
+  --bg: #0d1117;
+  --bg-soft: #161b22;
+  --bg-inset: #1c2128;
+  --fg: #e6edf3;
+  --fg-muted: #8b949e;
+  --border: #30363d;
+  --link: #6cb6ff;
+  --accent: #d2a8ff;
+  --quote: #9198a1;
+  --code-str: #7ee787;
+  --code-kw: #ff7b72;
+  --code-num: #ffab70;
+  --code-com: #768390;
+  --add: #3fb950;
+  --del: #ff7b72;
+  --shadow: 0 1px 3px rgba(1, 4, 9, .6);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ---------- chrome ---------- */
+header {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 20px;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: saturate(180%) blur(8px);
+  border-bottom: 1px solid var(--border);
+}
+#crumbs {
+  flex: 1 1 auto; min-width: 0;
+  font-family: var(--mono); font-size: 13px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  color: var(--fg-muted);
+}
+#crumbs b { color: var(--fg); font-weight: 600; }
+.btn {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  font-size: 12px; font-family: var(--sans);
+  color: var(--fg); background: var(--bg-soft);
+  border: 1px solid var(--border); border-radius: 6px;
+  cursor: pointer;
+}
+.btn:hover { background: var(--bg-inset); text-decoration: none; }
+
+/* ---------- layout ---------- */
+main { display: flex; gap: 32px; max-width: 1240px; margin: 0 auto; padding: 32px 20px 120px; }
+#toc {
+  flex: 0 0 220px; position: sticky; top: 76px; align-self: flex-start;
+  max-height: calc(100vh - 120px); overflow-y: auto;
+  font-size: 13px; line-height: 1.5;
+  border-left: 1px solid var(--border); padding-left: 14px;
+}
+#toc.hidden { display: none; }
+#toc div { color: var(--fg-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; font-size: 11px; margin-bottom: 8px; }
+#toc a { display: block; padding: 3px 0; color: var(--fg-muted); }
+#toc a:hover { color: var(--fg); text-decoration: none; }
+#toc a.lvl3 { padding-left: 12px; }
+#toc a.lvl4 { padding-left: 24px; font-size: 12px; }
+#toc a.active { color: var(--link); font-weight: 600; }
+article { flex: 1 1 auto; min-width: 0; max-width: 860px; }
+main:has(#toc.hidden) article { margin: 0 auto; }
+
+/* ---------- content ---------- */
+article h1, article h2, article h3, article h4, article h5, article h6 {
+  margin: 28px 0 14px; line-height: 1.3; font-weight: 600; scroll-margin-top: 76px;
+}
+article h1 { font-size: 2em; padding-bottom: 8px; border-bottom: 1px solid var(--border); margin-top: 0; }
+article h2 { font-size: 1.5em; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+article h3 { font-size: 1.22em; }
+article h4 { font-size: 1.05em; }
+article h5, article h6 { font-size: 1em; color: var(--fg-muted); }
+article .anchor { margin-left: 8px; color: var(--border); font-weight: 400; opacity: 0; }
+article h1:hover .anchor, article h2:hover .anchor, article h3:hover .anchor,
+article h4:hover .anchor, article h5:hover .anchor, article h6:hover .anchor { opacity: 1; }
+article p { margin: 0 0 16px; }
+article ul, article ol { margin: 0 0 16px; padding-left: 26px; }
+article li { margin: 4px 0; }
+article li > ul, article li > ol { margin: 4px 0; }
+article li.task { list-style: none; margin-left: -20px; }
+article li.task input { margin-right: 8px; }
+article hr { height: 1px; margin: 28px 0; border: 0; background: var(--border); }
+article blockquote {
+  margin: 0 0 16px; padding: 2px 16px;
+  color: var(--quote); border-left: 3px solid var(--border);
+}
+article blockquote > :last-child { margin-bottom: 0; }
+article img { max-width: 100%; border-radius: 6px; }
+article kbd {
+  font-family: var(--mono); font-size: 11px; padding: 2px 5px;
+  border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px;
+  background: var(--bg-soft);
+}
+article code {
+  font-family: var(--mono); font-size: 85%;
+  padding: .2em .4em; border-radius: 5px; background: var(--bg-inset);
+}
+article pre {
+  position: relative; margin: 0 0 16px; padding: 14px 16px;
+  overflow-x: auto; background: var(--bg-soft);
+  border: 1px solid var(--border); border-radius: 8px;
+  font-size: 13.5px; line-height: 1.55;
+}
+article pre code { padding: 0; background: none; font-size: 100%; }
+article pre .lang {
+  position: absolute; top: 0; right: 44px;
+  padding: 1px 7px; font-family: var(--sans); font-size: 10px;
+  letter-spacing: .05em; text-transform: uppercase;
+  color: var(--fg-muted); background: var(--bg-inset);
+  border-radius: 0 0 5px 5px;
+}
+article pre .copy {
+  position: absolute; top: 6px; right: 6px; padding: 2px 7px;
+  font-family: var(--sans); font-size: 11px; color: var(--fg-muted);
+  background: var(--bg); border: 1px solid var(--border); border-radius: 5px;
+  cursor: pointer; opacity: 0; transition: opacity .12s;
+}
+article pre:hover .copy { opacity: 1; }
+article table {
+  display: block; width: max-content; max-width: 100%;
+  margin: 0 0 16px; overflow-x: auto;
+  border-collapse: collapse; font-size: 14px;
+}
+article th, article td { padding: 6px 13px; border: 1px solid var(--border); }
+article th { background: var(--bg-soft); font-weight: 600; }
+article tbody tr:nth-child(even) { background: var(--bg-soft); }
+article .tok-str { color: var(--code-str); }
+article .tok-kw { color: var(--code-kw); }
+article .tok-num { color: var(--code-num); }
+article .tok-com { color: var(--code-com); font-style: italic; }
+article .diff-a { color: var(--add); }
+article .diff-d { color: var(--del); }
+article details {
+  margin: 0 0 16px; padding: 10px 14px;
+  background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px;
+}
+article summary { cursor: pointer; font-weight: 600; }
+#frontmatter {
+  margin: 0 0 24px; padding: 10px 14px;
+  font-family: var(--mono); font-size: 12.5px; white-space: pre-wrap;
+  color: var(--fg-muted); background: var(--bg-soft);
+  border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 6px;
+}
+#frontmatter.hidden { display: none; }
+.error {
+  padding: 16px; font-family: var(--mono); font-size: 13px;
+  color: var(--del); background: var(--bg-soft);
+  border: 1px solid var(--border); border-radius: 8px;
+}
+@media (max-width: 900px) { #toc { display: none; } main { padding-top: 24px; } }
+@media print {
+  header, #toc, .copy { display: none; }
+  body { font-size: 11pt; }
+  main { display: block; padding: 0; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div id="crumbs"></div>
+  <button class="btn" id="tocBtn" title="Toggle contents">&#9776;</button>
+  <button class="btn" id="themeBtn" title="Toggle theme">&#9788;</button>
+  <a class="btn" id="rawBtn" title="View source">Raw</a>
+</header>
+<main>
+  <nav id="toc" class="hidden"><div>Contents</div></nav>
+  <article>
+    <div id="frontmatter" class="hidden"></div>
+    <div id="body">Loading&hellip;</div>
+  </article>
+</main>
+<script>
+"use strict";
+
+/* ============================ markdown renderer ============================ */
+
+const NUL = "\u0000";
+const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+// Inline HTML kept as markup after escaping. Attributes are dropped.
+const SAFE_TAGS = "br|hr|details|summary|kbd|sub|sup|b|i|u|em|strong|del|s|small|abbr|dl|dt|dd";
+const unescapeSafeTags = s => s
+  .replace(new RegExp("&lt;(\\/?(?:" + SAFE_TAGS + "))\\s*\\/?&gt;", "gi"), (_, t) => "<" + t.toLowerCase() + ">");
+
+const KEYWORDS = new RegExp("\\b(?:" + [
+  "const", "let", "var", "function", "return", "class", "extends", "new", "this", "typeof", "instanceof",
+  "import", "from", "export", "default", "async", "await", "yield", "throw",
+  "if", "else", "elif", "for", "while", "do", "switch", "case", "break", "continue", "try", "except",
+  "catch", "finally", "with", "as", "in", "is", "not", "and", "or", "def", "lambda", "pass", "raise",
+  "self", "None", "True", "False", "null", "nil", "true", "false", "void", "public", "private", "static",
+  "struct", "enum", "interface", "type", "impl", "fn", "pub", "mut", "match", "use", "package", "func",
+  "then", "fi", "esac", "done", "local", "echo", "set", "unset", "sudo", "cd", "kubectl", "helm", "git"
+].join("|") + ")\\b");
+
+const NO_HASH_COMMENT = new Set(["css", "scss", "less", "json", "json5", "html", "xml", "c", "cpp", "h"]);
+
+function highlight(code, lang) {
+  lang = (lang || "").toLowerCase();
+  if (lang === "diff" || lang === "patch") {
+    return code.split("\n").map(l => {
+      const cls = /^\+/.test(l) ? "diff-a" : /^-/.test(l) ? "diff-d" : /^@@/.test(l) ? "tok-com" : "";
+      return cls ? '<span class="' + cls + '">' + esc(l) + "</span>" : esc(l);
+    }).join("\n");
+  }
+  const parts = ['("(?:\\\\.|[^"\\\\\\n])*"|\'(?:\\\\.|[^\'\\\\\\n])*\'|`(?:\\\\.|[^`\\\\])*`)'];
+  parts.push(NO_HASH_COMMENT.has(lang) ? "(\\/\\/[^\\n]*|\\/\\*[\\s\\S]*?\\*\\/)" : "(#[^\\n]*|\\/\\/[^\\n]*|\\/\\*[\\s\\S]*?\\*\\/)");
+  parts.push("(\\b\\d[\\d_]*(?:\\.\\d+)?(?:e[-+]?\\d+)?\\b|\\b0x[0-9a-f]+\\b)");
+  parts.push("(" + KEYWORDS.source + ")");
+  const re = new RegExp(parts.join("|"), "gi");
+  let out = "", last = 0, m;
+  while ((m = re.exec(code)) !== null) {
+    out += esc(code.slice(last, m.index));
+    const cls = m[1] ? "tok-str" : m[2] ? "tok-com" : m[3] ? "tok-num" : "tok-kw";
+    out += '<span class="' + cls + '">' + esc(m[0]) + "</span>";
+    last = m.index + m[0].length;
+  }
+  return out + esc(code.slice(last));
+}
+
+const slugs = new Map();
+function slug(text) {
+  let s = text.toLowerCase().replace(/<[^>]*>/g, "").replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-");
+  if (!s) s = "section";
+  const n = slugs.get(s) || 0;
+  slugs.set(s, n + 1);
+  return n ? s + "-" + n : s;
+}
+
+const headings = [];
+
+function inline(text) {
+  const spans = [];
+  // Code spans are captured before escaping so their content stays literal.
+  text = text.replace(/(`+)([\s\S]*?)\1/g, (_, __, code) => {
+    spans.push(code.replace(/^ | $/g, ""));
+    return NUL + (spans.length - 1) + NUL;
+  });
+  text = unescapeSafeTags(esc(text));
+  text = text.replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+&quot;([^&]*)&quot;)?\)/g,
+    (_, alt, src, title) => '<img src="' + src + '" alt="' + alt + '"' + (title ? ' title="' + title + '"' : "") + ">");
+  text = text.replace(/\[([^\]]+)\]\(([^)\s]+)(?:\s+&quot;([^&]*)&quot;)?\)/g,
+    (_, label, href, title) => '<a href="' + href + '"' + (title ? ' title="' + title + '"' : "") + ">" + label + "</a>");
+  text = text.replace(/&lt;(https?:\/\/[^\s&]+)&gt;/g, '<a href="$1">$1</a>');
+  text = text.replace(/(^|[\s(])(https?:\/\/[^\s<>()"']+)/g, '$1<a href="$2">$2</a>');
+  text = text.replace(/\*\*([^\n]+?)\*\*/g, "<strong>$1</strong>");
+  text = text.replace(/__([^\n_]+?)__/g, "<strong>$1</strong>");
+  text = text.replace(/(^|[^\w*])\*([^\s*][^*\n]*?)\*(?!\*)/g, "$1<em>$2</em>");
+  text = text.replace(/(^|[\s(])_([^\s_][^_\n]*?)_(?=[\s).,!?:;]|$)/g, "$1<em>$2</em>");
+  text = text.replace(/~~([^\n]+?)~~/g, "<del>$1</del>");
+  return text.replace(new RegExp(NUL + "(\\d+)" + NUL, "g"), (_, i) => "<code>" + esc(spans[+i]) + "</code>");
+}
+
+const RE_FENCE = /^(\s*)(`{3,}|~{3,})\s*([\w+#.-]*)/;
+const RE_HEAD = /^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$/;
+const RE_HR = /^ {0,3}([-*_])(?:\s*\1){2,}\s*$/;
+const RE_ITEM = /^(\s*)([-+*]|\d{1,9}[.)])(\s+)(.*)$/;
+const RE_TROW = /^\s*\|?(?:[^|\n]*\|)+[^|\n]*\|?\s*$/;
+const RE_TSEP = /^\s*\|?(?:\s*:?-{1,}:?\s*\|)+\s*:?-{0,}:?\s*\|?\s*$/;
+
+function blocks(lines) {
+  const out = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+
+    if (!line.trim()) { i++; continue; }
+
+    let m = line.match(RE_FENCE);
+    if (m) {
+      const close = new RegExp("^\\s*" + m[2][0] + "{" + m[2].length + ",}\\s*$");
+      const strip = m[1].length, lang = m[3];
+      const buf = [];
+      i++;
+      while (i < lines.length && !close.test(lines[i])) buf.push(lines[i++].slice(strip));
+      i++;
+      out.push('<pre><button class="copy">copy</button>' + (lang ? '<span class="lang">' + esc(lang) + "</span>" : "") +
+        "<code>" + highlight(buf.join("\n"), lang) + "</code></pre>");
+      continue;
+    }
+
+    if ((m = line.match(RE_HEAD))) {
+      const lvl = m[1].length, html = inline(m[2]), id = slug(m[2]);
+      headings.push({ lvl, id, text: m[2].replace(/[`*_[\]()]/g, "") });
+      out.push("<h" + lvl + ' id="' + id + '">' + html +
+        '<a class="anchor" href="#' + id + '" aria-label="Permalink">#</a></h' + lvl + ">");
+      i++;
+      continue;
+    }
+
+    if (RE_HR.test(line)) { out.push("<hr>"); i++; continue; }
+
+    // Collapsible sections written as raw HTML stay structural instead of literal.
+    if (/^\s*<details\b/i.test(line)) { out.push(/\bopen\b/i.test(line) ? "<details open>" : "<details>"); i++; continue; }
+    if (/^\s*<\/details>/i.test(line)) { out.push("</details>"); i++; continue; }
+    if ((m = line.match(/^\s*<summary\b[^>]*>([\s\S]*?)<\/summary>\s*$/i))) {
+      out.push("<summary>" + inline(m[1]) + "</summary>");
+      i++;
+      continue;
+    }
+
+    if (/^ {0,3}>/.test(line)) {
+      const buf = [];
+      while (i < lines.length && (/^ {0,3}>/.test(lines[i]) || (buf.length && lines[i].trim()))) {
+        buf.push(lines[i++].replace(/^ {0,3}>\s?/, ""));
+      }
+      out.push("<blockquote>" + blocks(buf) + "</blockquote>");
+      continue;
+    }
+
+    if (RE_ITEM.test(line)) {
+      const [html, next] = list(lines, i);
+      out.push(html);
+      i = next;
+      continue;
+    }
+
+    if (line.includes("|") && RE_TROW.test(line) && i + 1 < lines.length && RE_TSEP.test(lines[i + 1])) {
+      const [html, next] = table(lines, i);
+      out.push(html);
+      i = next;
+      continue;
+    }
+
+    const buf = [];
+    while (i < lines.length && lines[i].trim() && !RE_HEAD.test(lines[i]) && !RE_HR.test(lines[i]) &&
+           !RE_FENCE.test(lines[i]) && !/^ {0,3}>/.test(lines[i]) && !RE_ITEM.test(lines[i])) {
+      buf.push(lines[i++]);
+    }
+    out.push("<p>" + inline(buf.join("\n").replace(/  $/gm, "<br>")) + "</p>");
+  }
+  return out.join("\n");
+}
+
+function list(lines, start) {
+  const first = lines[start].match(RE_ITEM);
+  const baseIndent = first[1].length;
+  const ordered = /\d/.test(first[2]);
+  const startNo = ordered ? parseInt(first[2], 10) : 1;
+  const items = [];
+  let i = start, loose = false;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const m = line.match(RE_ITEM);
+    if (m && m[1].length <= baseIndent + 1) {
+      if (m[1].length < baseIndent) break;
+      if (ordered !== /\d/.test(m[2])) break;
+      items.push({ content: [m[4]], pad: m[1].length + m[2].length + m[3].length });
+      i++;
+      continue;
+    }
+    if (!line.trim()) {
+      // A blank line continues the list only when the next line belongs to it.
+      const nxt = lines[i + 1];
+      const nm = nxt && nxt.trim() ? nxt.match(RE_ITEM) : null;
+      const sameList = nm && nm[1].length >= baseIndent && /\d/.test(nm[2]) === ordered;
+      const indented = nxt && nxt.trim() && nxt.search(/\S/) > baseIndent;
+      if (sameList || indented) {
+        loose = true;
+        if (items.length) items[items.length - 1].content.push("");
+        i++;
+        continue;
+      }
+      break;
+    }
+    if (!items.length) break;
+    const cur = items[items.length - 1];
+    if (line.search(/\S/) > baseIndent) { cur.content.push(line.slice(Math.min(cur.pad, line.search(/\S/)))); i++; continue; }
+    break;
+  }
+
+  const body = items.map(it => {
+    let inner = blocks(it.content);
+    let cls = "";
+    const task = it.content[0].match(/^\[([ xX])\]\s+/);
+    if (task) {
+      cls = ' class="task"';
+      inner = inner.replace(/^<p>\[[ xX]\]\s*/, "<p>");
+      inner = inner.replace("<p>", '<p><input type="checkbox" disabled' + (task[1] === " " ? "" : " checked") + ">");
+    }
+    if (!loose) inner = inner.replace(/^<p>([\s\S]*?)<\/p>$/, "$1").replace(/^<p>([\s\S]*?)<\/p>\n/, "$1\n");
+    return "<li" + cls + ">" + inner + "</li>";
+  }).join("\n");
+
+  const tag = ordered ? "ol" : "ul";
+  const attr = ordered && startNo !== 1 ? ' start="' + startNo + '"' : "";
+  return ["<" + tag + attr + ">\n" + body + "\n</" + tag + ">", i];
+}
+
+function cells(line) {
+  return line.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map(c => c.trim());
+}
+
+function table(lines, start) {
+  const head = cells(lines[start]);
+  const align = cells(lines[start + 1]).map(s =>
+    /^:-+:$/.test(s) ? "center" : /-+:$/.test(s) ? "right" : /^:-+/.test(s) ? "left" : "");
+  let i = start + 2;
+  const rows = [];
+  while (i < lines.length && lines[i].trim() && lines[i].includes("|")) rows.push(cells(lines[i++]));
+  const sty = j => align[j] ? ' style="text-align:' + align[j] + '"' : "";
+  const thead = "<tr>" + head.map((c, j) => "<th" + sty(j) + ">" + inline(c) + "</th>").join("") + "</tr>";
+  const tbody = rows.map(r => "<tr>" + head.map((_, j) => "<td" + sty(j) + ">" + inline(r[j] || "") + "</td>").join("") + "</tr>").join("\n");
+  return ["<table><thead>" + thead + "</thead><tbody>" + tbody + "</tbody></table>", i];
+}
+
+function renderMarkdown(src) {
+  src = src.replace(/\r\n?/g, "\n").replace(/\t/g, "    ");
+  let fm = "";
+  const m = src.match(/^---\n([\s\S]*?)\n(?:---|\.\.\.)\s*\n/);
+  if (m) { fm = m[1]; src = src.slice(m[0].length); }
+  return { fm, html: blocks(src.split("\n")) };
+}
+
+/* ================================= page ================================= */
+
+const path = decodeURIComponent(location.pathname);
+const name = path.split("/").pop();
+document.title = name;
+
+(function crumbs() {
+  const parts = path.split("/").filter(Boolean);
+  const el = document.getElementById("crumbs");
+  let acc = "";
+  const bits = ['<a href="/">/</a>'];
+  parts.forEach((p, k) => {
+    acc += "/" + p;
+    bits.push(k === parts.length - 1 ? "<b>" + esc(p) + "</b>" : '<a href="' + acc + '/">' + esc(p) + "</a>");
+  });
+  el.innerHTML = bits.join('<span> &rsaquo; </span>');
+})();
+
+document.getElementById("rawBtn").href = path + "?raw=1";
+
+document.getElementById("themeBtn").onclick = () => {
+  const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  localStorage.setItem("md-theme", next);
+};
+
+const tocEl = document.getElementById("toc");
+document.getElementById("tocBtn").onclick = () => {
+  tocEl.classList.toggle("hidden");
+  localStorage.setItem("md-toc", tocEl.classList.contains("hidden") ? "0" : "1");
+};
+
+// Rendering a very large document blocks the page, so ask first and offer the
+// buffered text viewer, which reads the file in range requests.
+const BIG_BYTES = 2 * 1024 * 1024;
+
+function tooBig(bytes) {
+  document.getElementById("body").innerHTML =
+    '<div class="error">This file is ' + (bytes / 1048576).toFixed(1) + " MiB.\n" +
+    "Rendering it whole would block the page.\n\n" +
+    '<a href="' + path + '?view=text">Open the buffered text viewer</a>  ·  ' +
+    '<a href="' + path + '?raw=1">Raw</a>  ·  ' +
+    '<a href="#" id="anyway">Render anyway</a></div>';
+  document.getElementById("anyway").onclick = e => { e.preventDefault(); load(); };
+}
+
+fetch(path + "?raw=1", { method: "HEAD", cache: "no-store" })
+  .then(r => {
+    const size = Number(r.headers.get("Content-Length"));
+    if (size > BIG_BYTES) tooBig(size);
+    else load();
+  })
+  .catch(() => load());
+
+function load() {
+  fetch(path + "?raw=1", { cache: "no-store" })
+  .then(r => r.ok ? r.text() : Promise.reject(new Error(r.status + " " + r.statusText)))
+  .then(text => {
+    const { fm, html } = renderMarkdown(text);
+    document.getElementById("body").innerHTML = html;
+    if (fm) {
+      const box = document.getElementById("frontmatter");
+      box.textContent = fm;
+      box.classList.remove("hidden");
+    }
+    buildToc();
+    wireCopy();
+    if (location.hash) document.querySelector(decodeURIComponent(location.hash))?.scrollIntoView();
+  })
+  .catch(err => {
+    document.getElementById("body").innerHTML =
+      '<div class="error">Cannot load ' + esc(path) + "<br>" + esc(String(err.message || err)) +
+      '<br><br><a href="' + path + '?view=text">Open the buffered text viewer</a></div>';
+  });
+}
+
+function buildToc() {
+  const shown = headings.filter(h => h.lvl >= 2 && h.lvl <= 4);
+  if (shown.length < 3 || localStorage.getItem("md-toc") === "0") return;
+  tocEl.insertAdjacentHTML("beforeend", shown.map(h =>
+    '<a class="lvl' + h.lvl + '" href="#' + h.id + '">' + esc(h.text) + "</a>").join(""));
+  tocEl.classList.remove("hidden");
+
+  const links = new Map([...tocEl.querySelectorAll("a")].map(a => [a.getAttribute("href").slice(1), a]));
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (!e.isIntersecting) return;
+      links.forEach(a => a.classList.remove("active"));
+      links.get(e.target.id)?.classList.add("active");
+    });
+  }, { rootMargin: "-70px 0px -75% 0px" });
+  shown.forEach(h => { const el = document.getElementById(h.id); if (el) obs.observe(el); });
+}
+
+function wireCopy() {
+  document.querySelectorAll("pre .copy").forEach(btn => {
+    btn.onclick = () => {
+      navigator.clipboard.writeText(btn.parentElement.querySelector("code").innerText).then(() => {
+        btn.textContent = "copied";
+        setTimeout(() => (btn.textContent = "copy"), 1200);
+      });
+    };
+  });
+}
+</script>
+</body>
+</html>

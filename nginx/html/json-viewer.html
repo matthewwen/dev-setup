@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<!--
+  JSON viewer shim served by /etc/nginx/json.conf.
+  nginx rewrites browser navigations to *.json, *.jsonl, and *.ndjson to this
+  page. The page fetches the same path with ?raw=1 and renders a collapsible
+  tree. No network access and no third-party code.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JSON</title>
+<script>
+  document.documentElement.dataset.theme = localStorage.getItem("md-theme") ||
+    (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+</script>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='14'>&#128290;</text></svg>">
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --bg-soft: #f6f8fa;
+  --bg-inset: #f0f3f6;
+  --fg: #1f2328;
+  --fg-muted: #636c76;
+  --border: #d7dde3;
+  --link: #0a58ca;
+  --key: #0550ae;
+  --str: #0a7d36;
+  --num: #b1560f;
+  --bool: #8250df;
+  --null: #82878d;
+  --mark: #ffd33d;
+  --del: #cf222e;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+html[data-theme="dark"] {
+  --bg: #0d1117;
+  --bg-soft: #161b22;
+  --bg-inset: #1c2128;
+  --fg: #e6edf3;
+  --fg-muted: #8b949e;
+  --border: #30363d;
+  --link: #6cb6ff;
+  --key: #79c0ff;
+  --str: #7ee787;
+  --num: #ffab70;
+  --bool: #d2a8ff;
+  --null: #768390;
+  --mark: #9e6a03;
+  --del: #ff7b72;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 14px; }
+a { color: var(--link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+header {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  padding: 10px 16px;
+  background: var(--bg); border-bottom: 1px solid var(--border);
+}
+#crumbs {
+  flex: 1 1 260px; min-width: 0;
+  font-family: var(--mono); font-size: 13px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--fg-muted);
+}
+#crumbs b { color: var(--fg); font-weight: 600; }
+.btn {
+  padding: 4px 10px; font-size: 12px; color: var(--fg); background: var(--bg-soft);
+  border: 1px solid var(--border); border-radius: 6px; cursor: pointer;
+}
+.btn:hover { background: var(--bg-inset); text-decoration: none; }
+#find {
+  flex: 0 1 220px; padding: 4px 8px;
+  font-family: var(--mono); font-size: 12px;
+  color: var(--fg); background: var(--bg-soft);
+  border: 1px solid var(--border); border-radius: 6px;
+}
+#hits { font-size: 12px; color: var(--fg-muted); min-width: 74px; }
+#stats {
+  padding: 6px 16px; font-size: 12px; color: var(--fg-muted);
+  background: var(--bg-soft); border-bottom: 1px solid var(--border);
+}
+
+main { padding: 14px 16px 120px; }
+#tree { font-family: var(--mono); font-size: 13px; line-height: 1.6; }
+.node { padding-left: 16px; border-left: 1px solid transparent; }
+.node:hover { border-left-color: var(--border); }
+.row { display: flex; align-items: flex-start; gap: 6px; white-space: pre-wrap; word-break: break-word; }
+.tw {
+  flex: 0 0 auto; width: 12px; margin-left: -14px;
+  color: var(--fg-muted); cursor: pointer; user-select: none;
+  display: inline-block; transition: transform .1s;
+}
+.collapsed > .row > .tw { transform: rotate(-90deg); }
+.k { color: var(--key); }
+.s { color: var(--str); }
+.n { color: var(--num); }
+.b { color: var(--bool); }
+.nl { color: var(--null); font-style: italic; }
+.meta { color: var(--fg-muted); }
+.path {
+  margin-left: 8px; font-size: 11px; color: var(--fg-muted);
+  opacity: 0; cursor: pointer; background: none; border: 0; padding: 0;
+}
+.row:hover .path { opacity: 1; }
+.collapsed > .kids { display: none; }
+.collapsed > .row > .preview { display: inline; }
+.collapsed > .row > .brace { display: none; }
+.preview { display: none; color: var(--fg-muted); }
+mark { background: var(--mark); color: inherit; border-radius: 2px; }
+.hit > .row { background: color-mix(in srgb, var(--mark) 22%, transparent); border-radius: 3px; }
+pre#raw {
+  margin: 0; padding: 12px; overflow-x: auto;
+  font-family: var(--mono); font-size: 13px;
+  background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px;
+}
+#raw.hidden, #tree.hidden { display: none; }
+.error {
+  padding: 14px; font-family: var(--mono); font-size: 13px;
+  color: var(--del); background: var(--bg-soft);
+  border: 1px solid var(--border); border-radius: 8px; white-space: pre-wrap;
+}
+</style>
+</head>
+<body>
+<header>
+  <div id="crumbs"></div>
+  <input id="find" type="search" placeholder="filter keys / values" spellcheck="false">
+  <span id="hits"></span>
+  <button class="btn" id="expandBtn">Expand</button>
+  <button class="btn" id="collapseBtn">Collapse</button>
+  <button class="btn" id="rawBtn2">Source</button>
+  <button class="btn" id="copyBtn">Copy</button>
+  <button class="btn" id="themeBtn">&#9788;</button>
+  <a class="btn" id="rawBtn">Raw</a>
+</header>
+<div id="stats"></div>
+<main>
+  <div id="tree">Loading&hellip;</div>
+  <pre id="raw" class="hidden"></pre>
+</main>
+<script>
+"use strict";
+
+const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const path = decodeURIComponent(location.pathname);
+document.title = path.split("/").pop();
+
+(function crumbs() {
+  const parts = path.split("/").filter(Boolean);
+  let acc = "";
+  const bits = ['<a href="/">/</a>'];
+  parts.forEach((p, k) => {
+    acc += "/" + p;
+    bits.push(k === parts.length - 1 ? "<b>" + esc(p) + "</b>" : '<a href="' + acc + '/">' + esc(p) + "</a>");
+  });
+  document.getElementById("crumbs").innerHTML = bits.join("<span> &rsaquo; </span>");
+})();
+
+document.getElementById("rawBtn").href = path + "?raw=1";
+document.getElementById("themeBtn").onclick = () => {
+  const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  localStorage.setItem("md-theme", next);
+};
+
+/* ============================== rendering ============================== */
+
+// Nodes deeper than this start collapsed so huge documents stay responsive.
+const OPEN_DEPTH = 2;
+const BIG_NODE = 100;
+
+const kindOf = v => v === null ? "null" : Array.isArray(v) ? "array" : typeof v;
+
+function leaf(v) {
+  const k = kindOf(v);
+  if (k === "string") return '<span class="s">"' + esc(v) + '"</span>';
+  if (k === "number") return '<span class="n">' + esc(v) + "</span>";
+  if (k === "boolean") return '<span class="b">' + v + "</span>";
+  return '<span class="nl">null</span>';
+}
+
+// Shown in place of the opening brace while a node is collapsed.
+function preview(v) {
+  const n = Array.isArray(v) ? v.length : Object.keys(v).length;
+  const braces = Array.isArray(v) ? ["[", "]"] : ["{", "}"];
+  return '<span class="preview">' + braces[0] + " " + n + (n === 1 ? " item" : " items") + " " + braces[1] + "</span>";
+}
+
+function render(value, key, jsonPath, depth) {
+  const kind = kindOf(value);
+  const label = key === null ? "" : '<span class="k">' + esc(key) + "</span><span class=\"meta\">:</span> ";
+  const pathBtn = '<button class="path" data-path="' + esc(jsonPath) + '" title="Copy path">' + esc(jsonPath || "$") + "</button>";
+
+  if (kind !== "object" && kind !== "array") {
+    return '<div class="node" data-path="' + esc(jsonPath) + '"><div class="row">' +
+      '<span class="tw"></span>' + label + leaf(value) + pathBtn + "</div></div>";
+  }
+
+  const entries = Array.isArray(value)
+    ? value.map((v, i) => [String(i), v])
+    : Object.keys(value).map(k => [k, value[k]]);
+  const open = depth < OPEN_DEPTH && entries.length <= BIG_NODE;
+  const braces = Array.isArray(value) ? ["[", "]"] : ["{", "}"];
+
+  const kids = entries.map(([k, v]) =>
+    render(v, k, jsonPath + (Array.isArray(value) ? "[" + k + "]" : (jsonPath ? "." : "") + k), depth + 1)).join("");
+
+  return '<div class="node' + (open ? "" : " collapsed") + '" data-path="' + esc(jsonPath) + '">' +
+    '<div class="row"><span class="tw">' + (entries.length ? "&#9662;" : "") + "</span>" + label +
+    '<span class="brace meta">' + braces[0] + "</span>" + preview(value) + pathBtn + "</div>" +
+    '<div class="kids">' + kids + '<div class="row"><span class="tw"></span><span class="meta">' +
+    braces[1] + "</span></div></div></div>";
+}
+
+function countNodes(v) {
+  if (v === null || typeof v !== "object") return 1;
+  const vals = Array.isArray(v) ? v : Object.values(v);
+  return vals.reduce((a, x) => a + countNodes(x), 1);
+}
+
+function parse(text) {
+  try {
+    return { value: JSON.parse(text), kind: "json" };
+  } catch (jsonErr) {
+    // Fall back to line-delimited JSON, which .jsonl and log files use.
+    const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+    if (lines.length > 1) {
+      try {
+        return { value: lines.map(l => JSON.parse(l)), kind: "jsonl", records: lines.length };
+      } catch (lineErr) { /* fall through to the JSON error */ }
+    }
+    throw jsonErr;
+  }
+}
+
+const tree = document.getElementById("tree");
+const rawBox = document.getElementById("raw");
+let sourceText = "";
+
+// Parsing and rendering a very large document blocks the page, so ask first and
+// offer the buffered text viewer, which reads the file in range requests.
+const BIG_BYTES = 4 * 1024 * 1024;
+
+function tooBig(bytes) {
+  tree.innerHTML = '<div class="error">This file is ' + (bytes / 1048576).toFixed(1) + " MiB.\n" +
+    "Parsing it whole would block the page.\n\n" +
+    '<a href="' + path + '?view=text">Open the buffered text viewer</a>  ·  ' +
+    '<a href="' + path + '?raw=1">Raw</a>  ·  ' +
+    '<a href="#" id="anyway">Parse anyway</a></div>';
+  document.getElementById("anyway").onclick = e => { e.preventDefault(); load(); };
+}
+
+fetch(path + "?raw=1", { method: "HEAD", cache: "no-store" })
+  .then(r => {
+    const size = Number(r.headers.get("Content-Length"));
+    if (size > BIG_BYTES) tooBig(size);
+    else load();
+  })
+  .catch(() => load());
+
+function load() {
+  fetch(path + "?raw=1", { cache: "no-store" })
+  .then(r => r.ok ? r.text() : Promise.reject(new Error(r.status + " " + r.statusText)))
+  .then(text => {
+    sourceText = text;
+    const t0 = performance.now();
+    const { value, kind, records } = parse(text);
+    tree.innerHTML = render(value, null, "", 0);
+    rawBox.textContent = JSON.stringify(value, null, 2);
+    const bytes = new Blob([text]).size;
+    document.getElementById("stats").textContent = [
+      kind === "jsonl" ? records + " records (line-delimited)" : kindOf(value),
+      countNodes(value).toLocaleString() + " nodes",
+      (bytes / 1024).toFixed(1) + " KiB",
+      "parsed in " + (performance.now() - t0).toFixed(0) + " ms"
+    ].join("  ·  ");
+  })
+  .catch(err => {
+    tree.innerHTML = '<div class="error">Cannot render ' + esc(path) + "\n" + esc(String(err.message || err)) +
+      '\n\n<a href="' + path + '?view=text">Open the buffered text viewer</a>  ·  ' +
+      '<a href="' + path + '?raw=1">Raw</a></div>';
+  });
+}
+
+/* =============================== controls =============================== */
+
+tree.addEventListener("click", e => {
+  const copy = e.target.closest(".path");
+  if (copy) {
+    navigator.clipboard.writeText(copy.dataset.path || "$");
+    copy.textContent = "copied";
+    setTimeout(() => (copy.textContent = copy.dataset.path || "$"), 900);
+    return;
+  }
+  const row = e.target.closest(".row");
+  if (!row) return;
+  const node = row.parentElement;
+  if (node.querySelector(":scope > .kids")) node.classList.toggle("collapsed");
+});
+
+document.getElementById("expandBtn").onclick = () =>
+  tree.querySelectorAll(".node.collapsed").forEach(n => n.classList.remove("collapsed"));
+document.getElementById("collapseBtn").onclick = () =>
+  tree.querySelectorAll(".node > .kids").forEach(k => k.parentElement.classList.add("collapsed"));
+
+document.getElementById("copyBtn").onclick = () => {
+  navigator.clipboard.writeText(rawBox.textContent || sourceText);
+  const b = document.getElementById("copyBtn");
+  b.textContent = "Copied";
+  setTimeout(() => (b.textContent = "Copy"), 1000);
+};
+
+document.getElementById("rawBtn2").onclick = () => {
+  tree.classList.toggle("hidden");
+  rawBox.classList.toggle("hidden");
+  document.getElementById("rawBtn2").textContent = rawBox.classList.contains("hidden") ? "Source" : "Tree";
+};
+
+const find = document.getElementById("find");
+const hits = document.getElementById("hits");
+let findTimer;
+find.addEventListener("input", () => {
+  clearTimeout(findTimer);
+  findTimer = setTimeout(runFind, 140);
+});
+
+function runFind() {
+  const q = find.value.trim().toLowerCase();
+  tree.querySelectorAll("mark").forEach(m => m.replaceWith(document.createTextNode(m.textContent)));
+  tree.querySelectorAll(".hit").forEach(n => n.classList.remove("hit"));
+  if (!q) { hits.textContent = ""; return; }
+
+  let found = 0;
+  tree.querySelectorAll(".node").forEach(node => {
+    const row = node.querySelector(":scope > .row");
+    if (!row) return;
+    // Match keys and values only, never the path chip or the braces.
+    const text = [...row.querySelectorAll(".k, .s, .n, .b, .nl")].map(s => s.textContent).join(" ");
+    if (!text.toLowerCase().includes(q)) return;
+    found++;
+    node.classList.add("hit");
+    row.querySelectorAll(".k, .s, .n, .b, .nl").forEach(span => highlight(span, q));
+    for (let p = node.parentElement; p && p !== tree; p = p.parentElement) p.classList.remove("collapsed");
+  });
+  hits.textContent = found ? found + (found === 1 ? " match" : " matches") : "no match";
+  const first = tree.querySelector(".hit");
+  if (first) first.scrollIntoView({ block: "center" });
+}
+
+function highlight(span, q) {
+  const text = span.textContent;
+  const at = text.toLowerCase().indexOf(q);
+  if (at < 0) return;
+  span.innerHTML = esc(text.slice(0, at)) + "<mark>" + esc(text.slice(at, at + q.length)) +
+    "</mark>" + esc(text.slice(at + q.length));
+}
+
+addEventListener("keydown", e => {
+  if (e.key === "/" && document.activeElement !== find) { e.preventDefault(); find.focus(); }
+  if (e.key === "Escape" && document.activeElement === find) { find.value = ""; runFind(); find.blur(); }
+});
+</script>
+</body>
+</html>

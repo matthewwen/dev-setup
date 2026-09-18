@@ -14,6 +14,8 @@ Shell utilities for managing a local dev environment with tmux and remote SSH de
 
 **`tmux/`** is a standalone tmux configuration. `tmux.conf` is the main config (symlinked to `~/.tmux.conf`). It supports nested local/remote sessions — F12 toggles key passthrough. `tmux.remote.conf` is auto-loaded over SSH. `yank.sh` handles cross-platform clipboard (pbcopy/xclip/xsel/OSC52). `renew_env.sh` pushes updated env vars into live panes.
 
+**`nginx/`** is a local web server setup, installed by `nginx/install.sh` which symlinks `conf/` and `html/` into `/etc/nginx`. It routes apps by hostname (`conf/hosts.conf`, overridable with `--hosts`), and serves the webroot through a file explorer with search (`html/explorer.html` plus `scripts/explorer-server.py`), rendered Markdown and JSON, a buffered viewer for large text files, and Inspect AI eval logs. It is kept identical to `MattWenScripts/nginx`.
+
 **`dev/macos.sh`** sources `common.sh` and adds macOS-specific prompt/color setup. This is what gets sourced in `.zshrc` on macOS.
 
 ## Configuration

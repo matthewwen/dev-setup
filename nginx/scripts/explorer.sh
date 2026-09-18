@@ -11,10 +11,12 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVER="${SCRIPT_DIR}/explorer-server.py"
-ROOT="${NGINX_ROOT:-/usr/share/nginx/html}"
+# shellcheck source=platform.sh
+source "${SCRIPT_DIR}/platform.sh"
+ROOT="$NGINX_ROOT"
 PORT="${EXPLORER_PORT:-7576}"
 PIDFILE="${EXPLORER_PIDFILE:-/tmp/nginx-explorer.pid}"
-BASE="${NGINX_BASE_URL:-http://localhost}"
+BASE="$NGINX_BASE_URL"
 LOGFILE="${EXPLORER_LOG:-/tmp/nginx-explorer.log}"
 
 die() { echo "$*" >&2; exit 1; }

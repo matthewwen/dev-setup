@@ -11,11 +11,14 @@ set -euo pipefail
 #   ./inspect.sh url <path>             print the http URL for a path
 #   ./inspect.sh bundle <log-dir> <out> write a standalone viewer + logs copy
 
-ROOT="${NGINX_ROOT:-/usr/share/nginx/html}"
-# Set NGINX_BASE_URL when the site is reached on another port, such as through
-# an SSH tunnel: export NGINX_BASE_URL=http://localhost:8002
-BASE="${NGINX_BASE_URL:-http://localhost}"
-VIEWER_DIR="${INSPECT_VIEWER_DIR:-/usr/share/nginx/inspect-view}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=platform.sh
+source "${SCRIPT_DIR}/platform.sh"
+ROOT="$NGINX_ROOT"
+# NGINX_BASE_URL follows the installed port. Set it when the site is reached on
+# another port, such as through an SSH tunnel: export NGINX_BASE_URL=http://localhost:8002
+BASE="$NGINX_BASE_URL"
+VIEWER_DIR="$INSPECT_VIEWER_DIR"
 HOSTNAME_LIVE="${INSPECT_HOSTNAME:-inspect.localhost}"
 PORT="${INSPECT_PORT:-7575}"
 
@@ -26,8 +29,11 @@ require_inspect() {
     die "inspect is not on PATH. Activate the environment with inspect_ai installed."
 }
 
+# sudo only when the parent directory is not writable, so a Homebrew tree or a
+# webroot the installer handed to the user needs no password.
 sudo_cmd() {
-  if (( EUID == 0 )); then "$@"; else sudo "$@"; fi
+  local parent="$1"; shift
+  if (( EUID == 0 )) || [[ -w "$parent" ]]; then "$@"; else sudo "$@"; fi
 }
 
 # Map a filesystem path to its http URL by matching the webroot symlinks.
@@ -62,9 +68,9 @@ cmd_viewer() {
   inspect view embed --log-dir "$stage" >/dev/null
   [[ -f "${stage}/index.html" ]] || die "inspect view embed wrote no index.html"
 
-  sudo_cmd rm -rf "$VIEWER_DIR"
-  sudo_cmd mkdir -p "$VIEWER_DIR"
-  sudo_cmd cp -a "${stage}/index.html" "${stage}/assets" "$VIEWER_DIR/"
+  sudo_cmd "$(dirname "$VIEWER_DIR")" rm -rf "$VIEWER_DIR"
+  sudo_cmd "$(dirname "$VIEWER_DIR")" mkdir -p "$VIEWER_DIR"
+  sudo_cmd "$(dirname "$VIEWER_DIR")" cp -a "${stage}/index.html" "${stage}/assets" "$VIEWER_DIR/"
   echo "Installed the Inspect viewer in ${VIEWER_DIR}"
   echo "Open any .eval file under ${BASE}/"
 }
@@ -118,7 +124,7 @@ cmd_link() {
   [[ -d "$dir" ]] || die "No such directory: $dir"
   dir="$(realpath "$dir")"
   name="${name:-$(basename "$dir")}"
-  sudo_cmd ln -sfn "$dir" "${ROOT}/${name}"
+  sudo_cmd "$ROOT" ln -sfn "$dir" "${ROOT}/${name}"
   echo "Linked ${ROOT}/${name} -> ${dir}"
   echo "Open ${BASE}/${name}/"
 }

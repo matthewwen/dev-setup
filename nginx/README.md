@@ -9,10 +9,13 @@ JSON, and Inspect AI eval logs.
 ## Layout
 
 ```
-install.sh   symlinks conf/ and html/ into /etc/nginx, then reloads nginx
-conf/        nginx configs, symlinked into /etc/nginx by their base name
-html/        viewer pages served from /etc/nginx
+install.sh   renders conf/ and links html/ into the nginx config dir, then reloads
+conf/        nginx config templates; @...@ fields are filled at install time
+html/        viewer pages, symlinked into the config dir
 scripts/     helper commands (explorer.sh, explorer-server.py, inspect.sh)
+scripts/platform.sh   OS and package detection shared by every script
+systemd/     user unit for the explorer API (Linux)
+launchd/     launch agent for the explorer API (macOS)
 ```
 
 - `conf/nginx.conf` — main config copied from this machine.
@@ -23,25 +26,59 @@ scripts/     helper commands (explorer.sh, explorer-server.py, inspect.sh)
 - `conf/explorer.conf`, `conf/md.conf`, `conf/json.conf`, `conf/text.conf`,
   `conf/inspect.conf` — feature snippets included in the default server.
 
-nginx runs as `user root`, so a webroot symlinked to a build directory under
-`$HOME` serves without chmod.
+On Linux nginx runs as `user root`, so a webroot symlinked to a build directory
+under `$HOME` serves without chmod. With Homebrew on macOS nginx runs as the
+login user on port 8080, which reads the same files without root.
 
 ## Install
 
 ```bash
-./install.sh
+./install.sh            # detect the platform, render, validate, reload
+./install.sh --show     # print the detected layout and exit
 ```
 
 The script:
 
-- backs up the existing main config once as
-  `/etc/nginx/nginx.conf.pre-dev-setup`
-- symlinks every file in `conf/` and `html/` into `/etc/nginx` under its base
-  name, so include paths stay flat
-- removes links it installed earlier and no longer owns, such as a renamed
+- detects the OS and how nginx was installed, and reads the compiled paths from
+  `nginx -V`
+- backs up the existing main config once as `nginx.conf.pre-dev-setup` in the
+  config dir
+- renders every `conf/*.conf` into the config dir under its base name, with the
+  paths and port filled in, and symlinks the `html/` pages beside them
+- removes files it installed earlier and no longer owns, such as a renamed
   snippet
 - runs `nginx -t`
 - enables and starts nginx, or reloads it when already running
+- installs the explorer API as a user service (systemd) or launch agent (launchd)
+
+### Platforms
+
+| | Linux, apt | Linux, yum / dnf | macOS, Homebrew |
+| :-- | :-- | :-- | :-- |
+| config dir | `/etc/nginx` | `/etc/nginx` | `$(brew --prefix)/etc/nginx` |
+| webroot | `/var/www/html` | `/usr/share/nginx/html` | `$(brew --prefix)/var/www` |
+| logs | `/var/log/nginx` | `/var/log/nginx` | `$(brew --prefix)/var/log/nginx` |
+| modules | `/etc/nginx/modules-enabled` | `/usr/share/nginx/modules` | none |
+| port | 80 | 80 | 8080 |
+| runs as | root (`user root`) | root (`user root`) | login user |
+| service | `systemctl` | `systemctl` | `brew services` |
+| explorer API | systemd user unit | systemd user unit | launch agent |
+
+`scripts/platform.sh` derives these and exports them as `NGINX_OS`,
+`NGINX_PKG`, `NGINX_DIR`, `NGINX_ROOT`, `NGINX_LOG_DIR`, `NGINX_PID`,
+`NGINX_MODULES_DIR`, `INSPECT_VIEWER_DIR`, `NGINX_PORT`, and `NGINX_BASE_URL`.
+Set any of them before running a script to override the detection. `--port <n>`
+sets the listen port; the next run reads the port back from the installed
+config, so `explorer.sh` and `inspect.sh` print matching URLs.
+
+On macOS install nginx first with `brew install nginx`. The installer needs no
+sudo there, because Homebrew's tree belongs to the user. A port under 1024
+needs root; either keep 8080 or start nginx with `sudo brew services start
+nginx`, in which case the config carries `user root` again.
+
+On Linux the installer uses sudo for the config dir and manages nginx with
+`systemctl`. Debian and Ubuntu (apt) get `/var/www/html` as the webroot;
+Amazon Linux, Fedora, and RHEL (yum / dnf) get `/usr/share/nginx/html`.
 
 ### Host routes per machine
 
@@ -73,14 +110,17 @@ Entry points after install:
 | `http://localhost/__raw/<path>` | plain nginx index and raw bytes |
 | `http://inspect.localhost/` | live Inspect AI viewer |
 
-The installer enables and starts `nginx-explorer.service` as a user service, so
-the explorer API survives terminal exits and restarts after login. Everything
-else is served by nginx alone. Check it with:
+The installer enables and starts the explorer API as a user service, so it
+survives terminal exits and restarts after login. Everything else is served by
+nginx alone. Check it with:
 
 ```bash
-systemctl --user status nginx-explorer
+systemctl --user status nginx-explorer                 # Linux
+launchctl print gui/$(id -u)/com.dev-setup.nginx-explorer   # macOS
 ./scripts/explorer.sh status
 ```
+
+On macOS the agent logs to `~/Library/Logs/nginx-explorer.log`.
 
 ## Keeping the copies in step
 
@@ -96,15 +136,16 @@ copy in either direction.
 
 ## Reaching the site on another port
 
-nginx serves this on port 80. When the site is reached through a tunnel or a
-forwarded port, such as `http://localhost:8002/`, the browser must stay on that
-port. Two settings keep that true:
+nginx serves this on port 80 on Linux and 8080 with Homebrew. When the site is
+reached through a tunnel or a forwarded port, such as `http://localhost:8002/`,
+the browser must stay on that port. Two settings keep that true:
 
 - `absolute_redirect off` in `conf/nginx.conf` makes every redirect a path, such
   as `Location: /fmr_gyms/`. The default absolute form is built from
   `$server_port`, which reports 80 and drops the forwarded port.
 - The helper scripts print URLs from `NGINX_BASE_URL`, which defaults to
-  `http://localhost`. Export it to match the port you browse on:
+  `http://localhost` plus the installed port. Export it to match the port you
+  browse on:
 
 ```bash
 export NGINX_BASE_URL=http://localhost:8002
@@ -125,12 +166,12 @@ page carries a host name.
 #
 #     location / {
 #         proxy_pass http://127.0.0.1:8000;
-#         include /etc/nginx/proxy-dev.conf;
+#         include proxy-dev.conf;
 #     }
 # }
 ```
 
-Add another `server` block to expose another local port under its own hostname.
+Match `listen` to the port in `nginx.conf`. Add another `server` block to expose another local port under its own hostname.
 
 ## Raw versus rendered
 
@@ -217,14 +258,14 @@ button opens the current directory there, and each raw listing links back.
 ./scripts/explorer.sh run      # foreground
 ```
 
-The normal install path manages this through `nginx-explorer.service`; use the
-manual commands for a temporary or non-systemd setup.
+The normal install path manages this through the systemd user unit or the
+launch agent; use the manual commands for a temporary setup.
 
 ### Editing files
 
 The explorer API can create, replace, and remove files under the webroot. The
 installer makes the webroot writable by the installing user and creates
-`~/html -> /usr/share/nginx/html` when that link does not already exist.
+`~/html -> <webroot>` when that link does not already exist.
 
 Mutations require the per-user token in
 `~/.config/nginx-explorer/edit-token`. The service listens on loopback, but the
@@ -358,7 +399,7 @@ Opening a `.eval` file in the browser opens it in the Inspect log viewer. One
 shared copy of that viewer answers every log:
 
 ```bash
-./scripts/inspect.sh viewer     # writes /usr/share/nginx/inspect-view
+./scripts/inspect.sh viewer     # writes <webroot>/../inspect-view
 ```
 
 `conf/inspect.conf` then redirects a navigation to `<log>.eval` to
@@ -412,13 +453,14 @@ EOF
 node -e 'import("/tmp/mdrender.mjs").then(m => console.log(m.renderMarkdown("# hi\n\n- a\n- b\n").html))'
 ```
 
-To test a config change without touching the running server, copy `conf/` to a
-temp directory, point the viewer paths at that copy, and run a second nginx on a
-high port:
+To test a config change without touching the running server, render into a temp
+directory and run a second nginx on a high port:
 
 ```bash
-nginx -t -c /tmp/nginxtest/nginx.conf -p /tmp/nginxtest
-nginx    -c /tmp/nginxtest/nginx.conf -p /tmp/nginxtest
+T=$(mktemp -d); mkdir -p $T/etc $T/www $T/log; cp "$(nginx -V 2>&1 | tr ' ' '\n' | sed -n 's|--conf-path=||p' | xargs dirname)/mime.types" $T/etc/
+NGINX_DIR=$T/etc NGINX_ROOT=$T/www NGINX_LOG_DIR=$T/log NGINX_PID=$T/nginx.pid \
+  ./install.sh --port 8089 --no-services
+nginx -c $T/etc/nginx.conf -p $T
 ```
 
 ## Revert
@@ -426,10 +468,17 @@ nginx    -c /tmp/nginxtest/nginx.conf -p /tmp/nginxtest
 Restore the config saved by the installer:
 
 ```bash
+# Linux
 sudo rm -f /etc/nginx/nginx.conf
 sudo mv /etc/nginx/nginx.conf.pre-dev-setup /etc/nginx/nginx.conf
 sudo nginx -t && sudo systemctl reload nginx
+
+# macOS, Homebrew
+D=$(brew --prefix)/etc/nginx
+rm -f $D/nginx.conf && mv $D/nginx.conf.pre-dev-setup $D/nginx.conf
+nginx -t && brew services restart nginx
+launchctl bootout gui/$(id -u)/com.dev-setup.nginx-explorer
 ```
 
-`/etc/nginx/nginx.conf.default` holds the stock upstream config if you ever want
+`nginx.conf.default` beside it holds the stock upstream config if you ever want
 a clean baseline. It is not a backup of your current file.

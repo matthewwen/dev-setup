@@ -49,6 +49,25 @@ export MR_WS="$HOME/workspaces/MyScripts"      # YOUR mono repo — your work sc
 export PATH="$MR_WS/bin/setups:$PATH"          # make your work scripts bare-runnable
 ```
 
+## nginx
+
+This nginx setup gives local agent work a browsable, searchable webroot:
+
+- file explorer with content and filename search
+- raw files plus rendered Markdown, JSON, text, and Inspect AI eval logs
+- authenticated file create, edit, directory creation, and deletion through
+  `/__api/files`
+- a persistent Explorer API managed by `nginx-explorer.service`
+
+## Herdr
+
+[Herdr](https://github.com/herdrdev/herdr) keeps terminal-based coding agents
+running and observable across disconnects and restarts. Install it with:
+
+```bash
+curl -fsSL https://herdr.dev/install.sh | sh
+```
+
 ## Commands
 
 | Command | Description |

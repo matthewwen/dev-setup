@@ -1,13 +1,24 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "bash '/home/mattwen/.codex/herdr-agent-state.sh' session",
+            "timeout": 10,
+            "type": "command"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
           {
-            "type": "command",
             "command": "zsh -lc 'dev_setup=\"${DEV_SETUP:-}\"; [[ -f \"$dev_setup/dev/common.sh\" ]] || dev_setup=\"$HOME/workspaces/dev-setup\"; [[ -f \"$dev_setup/dev/common.sh\" ]] || exit 0; source \"$dev_setup/dev/common.sh\" && tnotify'",
+            "statusMessage": "Sending tmux notification",
             "timeout": 5,
-            "statusMessage": "Sending tmux notification"
+            "type": "command"
           }
         ]
       }

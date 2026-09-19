@@ -421,6 +421,26 @@ if [[ ":$PATH:" != *":$DEV_SETUP_HOME/bin/setups:"* ]]; then
     export PATH="$PATH:$DEV_SETUP_HOME/bin/setups"
 fi
 
+# ==============================================================================
+# nginx web server and explorer API: nginxctl on | off | restart | status
+# ==============================================================================
+# Resolve from this file, because DEV_SETUP_HOME can be a scripts repo that
+# does not carry nginx/.
+_NGINX_SERVICE_SH="${${(%):-%x}:A:h:h}/nginx/scripts/service.sh"
+nginxctl() {
+    "$_NGINX_SERVICE_SH" "$@"
+}
+
+_nginxctl_completion() {
+    local -a actions
+    actions=('on:enable and start nginx and the explorer API'
+             'off:stop and disable both'
+             'restart:restart both'
+             'status:show service state and health')
+    _describe 'action' actions
+}
+compdef _nginxctl_completion nginxctl
+
 _register_work_completion() {
     local script=$1
     local base=$(basename $script)

@@ -59,6 +59,14 @@ This nginx setup gives local agent work a browsable, searchable webroot:
   `/__api/files`
 - a persistent Explorer API managed by `nginx-explorer.service`
 
+Turn both services off when the machine is busy, and back on later:
+
+```zsh
+nginxctl off      # stop and disable nginx and the explorer API
+nginxctl on       # enable and start both
+nginxctl status
+```
+
 ## Herdr
 
 [Herdr](https://github.com/herdrdev/herdr) keeps terminal-based coding agents
@@ -81,6 +89,7 @@ the tmux-style keybindings in `herdr/config.toml` with:
 | `cleanup` | kill all dev tmux sessions |
 | `bye` | cleanup + kill tmux server |
 | `edit <work-script>` | edit a work script; creates it in `bin/setups` if absent |
+| `nginxctl on\|off\|restart\|status` | manage the nginx web server and explorer API |
 
 ## Work Scripts
 

@@ -80,6 +80,20 @@ On Linux the installer uses sudo for the config dir and manages nginx with
 `systemctl`. Debian and Ubuntu (apt) get `/var/www/html` as the webroot;
 Amazon Linux, Fedora, and RHEL (yum / dnf) get `/usr/share/nginx/html`.
 
+### Turn the services on and off
+
+```bash
+./scripts/service.sh off       # stop nginx and the explorer API, keep them off after reboot
+./scripts/service.sh on        # enable and start both
+./scripts/service.sh restart
+./scripts/service.sh status    # unit state plus a health check of both URLs
+```
+
+`dev/common.sh` exposes the same script as `nginxctl`, with tab completion.
+On Linux it drives `systemctl` (nginx as a system unit, the explorer as a user
+unit). On macOS it drives `brew services` for nginx and `launchctl` for the
+explorer launch agent. Run `install.sh` once first; it creates the units.
+
 ### Host routes per machine
 
 `conf/hosts.conf` is version controlled, so machine-specific routes belong

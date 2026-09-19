@@ -60,9 +60,31 @@ def equalize(tab_id, node, path):
         return
     a = chain(node["first"], node["direction"])
     b = chain(node["second"], node["direction"])
-    rpc("layout.set_split_ratio", {"tab_id": tab_id, "path": path, "ratio": a / (a + b)})
+    ratio = a / (a + b)
+    if abs(node.get("ratio", -1) - ratio) > 0.005:
+        rpc("layout.set_split_ratio", {"tab_id": tab_id, "path": path, "ratio": ratio})
     equalize(tab_id, node["first"], path + [False])
     equalize(tab_id, node["second"], path + [True])
+
+
+def shape(node):
+    """Tree structure without ratios, for comparing layouts."""
+    if node["type"] == "pane":
+        return node["pane_id"]
+    return (node["direction"], shape(node["first"]), shape(node["second"]))
+
+
+def target_shape(layout, panes):
+    """Simulate the moves: each placement replaces the anchor leaf with a split."""
+    def insert(node, anchor, direction, new):
+        if isinstance(node, str):
+            return (direction, node, new) if node == anchor else node
+        return (node[0], insert(node[1], anchor, direction, new), insert(node[2], anchor, direction, new))
+
+    tree = panes[0]
+    for idx, anchor, direction in placements(layout, panes):
+        tree = insert(tree, panes[anchor], direction, panes[idx])
+    return tree
 
 
 def move(pane_id, destination):
@@ -111,15 +133,23 @@ def main():
                 current = f.read().strip()
         except OSError:
             current = ""
-        layout = LAYOUTS[(LAYOUTS.index(current) + 1) % len(LAYOUTS)] if current in LAYOUTS else LAYOUTS[0]
+        start = LAYOUTS.index(current) + 1 if current in LAYOUTS else 0
+        # With few panes some layouts look the same. Skip those so each press changes something.
+        layout = LAYOUTS[start % len(LAYOUTS)]
+        for offset in range(len(LAYOUTS)):
+            candidate = LAYOUTS[(start + offset) % len(LAYOUTS)]
+            if target_shape(candidate, panes) != shape(export["root"]):
+                layout = candidate
+                break
 
-    ids = list(panes)
-    for idx, anchor, direction in placements(layout, panes):
-        parked = move(ids[idx], {"type": "new_tab", "label": "select-layout"})
-        ids[idx] = move(parked, {"type": "tab", "tab_id": tab_id, "split": direction,
-                                 "target_pane_id": ids[anchor]})
+    if target_shape(layout, panes) != shape(export["root"]):
+        ids = list(panes)
+        for idx, anchor, direction in placements(layout, panes):
+            parked = move(ids[idx], {"type": "new_tab", "label": "select-layout"})
+            ids[idx] = move(parked, {"type": "tab", "tab_id": tab_id, "split": direction,
+                                     "target_pane_id": ids[anchor]})
+        export = rpc("layout.export", {"tab_id": tab_id})["layout"]
 
-    export = rpc("layout.export", {"tab_id": tab_id})["layout"]
     equalize(tab_id, export["root"], [])
     if focused:
         rpc("pane.focus", {"pane_id": focused})

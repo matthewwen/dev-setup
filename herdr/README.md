@@ -28,6 +28,7 @@ The script installs the binary when it is missing, links `config.toml` to
 | Move pane to new tab | `prefix !` | `prefix !` |
 | Move pane to workspace by name | `prefix .` | n/a |
 | Join another tab's panes into this tab | `prefix @` | `join-pane` |
+| Cycle pane layout | `prefix space` | `prefix space` |
 | New tab | `prefix c` | `prefix c` (window) |
 | Rename tab | `prefix r` | `prefix r` |
 | Close tab | `prefix X` | `prefix X` |
@@ -38,6 +39,9 @@ The script installs the binary when it is missing, links `config.toml` to
 | Toggle sidebar | `prefix b` or `prefix ctrl+s` | `prefix ctrl+s` (status) |
 | Reload config | `prefix ctrl+r` | `prefix ctrl+r` |
 | Edit config | `prefix ctrl+e` | `prefix ctrl+e` |
+
+`select-layout.sh <layout>` also takes an explicit layout: `tiled`,
+`even-horizontal`, `even-vertical`, `main-vertical`, or `main-horizontal`.
 
 Not mapped: tmux `prefix Tab` (last window) has no herdr equivalent.
 herdr defaults stay for help (`prefix ?`), settings (`prefix s`), workspace

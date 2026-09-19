@@ -83,3 +83,10 @@ type = "popup"
 command = "~/.config/herdr/join-pane.sh"
 width = "60%"
 height = "40%"
+
+# Cycle pane layouts (tiled, even-horizontal, even-vertical, main-vertical,
+# main-horizontal), like tmux prefix+space (next-layout).
+[[keys.command]]
+key = "prefix+space"
+type = "shell"
+command = "~/.config/herdr/select-layout.sh"

@@ -32,6 +32,7 @@ echo "Linking ${CONFIG} -> ${BASE_DIR}/config.toml"
 ln -sfn "${BASE_DIR}/config.toml" "$CONFIG"
 ln -sfn "${BASE_DIR}/move-pane.sh" "${CONFIG_DIR}/move-pane.sh"
 ln -sfn "${BASE_DIR}/join-pane.sh" "${CONFIG_DIR}/join-pane.sh"
+ln -sfn "${BASE_DIR}/select-layout.sh" "${CONFIG_DIR}/select-layout.sh"
 
 echo "Validating config..."
 herdr config check

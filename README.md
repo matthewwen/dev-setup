@@ -62,10 +62,11 @@ This nginx setup gives local agent work a browsable, searchable webroot:
 ## Herdr
 
 [Herdr](https://github.com/herdrdev/herdr) keeps terminal-based coding agents
-running and observable across disconnects and restarts. Install it with:
+running and observable across disconnects and restarts. Install it and link
+the tmux-style keybindings in `herdr/config.toml` with:
 
 ```bash
-curl -fsSL https://herdr.dev/install.sh | sh
+./herdr/install.sh
 ```
 
 ## Commands

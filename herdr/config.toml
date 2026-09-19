@@ -1,0 +1,85 @@
+# herdr configuration. Installed by herdr/install.sh as a symlink at
+# ~/.config/herdr/config.toml. Full reference: herdr --default-config
+#
+# Keybindings mirror tmux/tmux.conf. Model mapping:
+#   tmux session -> herdr workspace
+#   tmux window  -> herdr tab
+#   tmux pane    -> herdr pane
+
+onboarding = false
+
+[theme]
+name = "dracula"
+auto_switch = false
+
+[keys]
+prefix = "ctrl+b"
+
+# Config
+reload_config = "prefix+ctrl+r"
+
+# Tabs (tmux windows)
+new_tab = "prefix+c"
+rename_tab = "prefix+r"
+switch_tab = "prefix+1..9"
+previous_tab = "prefix+p"
+next_tab = "prefix+n"
+close_tab = "prefix+shift+x"
+
+# Workspaces (tmux sessions)
+rename_workspace = "prefix+shift+r"
+close_workspace = "prefix+shift+q"
+detach = "prefix+d"
+
+# Panes
+# split_vertical places panes side by side, like tmux `split-window -h`.
+# split_horizontal stacks panes, like tmux `split-window -v`.
+# Both spellings are bound because terminals differ in how they report `|` and `_`.
+split_vertical = ["prefix+|", "prefix+shift+backslash"]
+split_horizontal = ["prefix+_", "prefix+shift+minus"]
+close_pane = "prefix+x"
+zoom = ["prefix+plus", "prefix+z"]
+focus_pane_left = "prefix+h"
+focus_pane_down = "prefix+j"
+focus_pane_up = "prefix+k"
+focus_pane_right = "prefix+l"
+resize_pane_left = "prefix+ctrl+left"
+resize_pane_down = "prefix+ctrl+down"
+resize_pane_up = "prefix+ctrl+up"
+resize_pane_right = "prefix+ctrl+right"
+# Moved off prefix+r, which rename_tab uses.
+resize_mode = "prefix+alt+r"
+
+# Sidebar (tmux status bar toggle is prefix+C-s)
+toggle_sidebar = ["prefix+b", "prefix+ctrl+s"]
+
+# Edit this file and reload, like tmux prefix+C-e.
+[[keys.command]]
+key = "prefix+ctrl+e"
+type = "popup"
+command = "${EDITOR:-vim} ~/.config/herdr/config.toml && herdr server reload-config"
+width = "90%"
+height = "90%"
+
+# Move the focused pane to a new tab, like tmux prefix+! (break-pane).
+# herdr has no built-in action, so this runs `herdr pane move --new-tab`.
+[[keys.command]]
+key = ["prefix+!", "prefix+shift+1"]
+type = "shell"
+command = "herdr pane move \"$HERDR_ACTIVE_PANE_ID\" --new-tab --focus"
+
+# Move the focused pane to a workspace by name, like a tmux command prompt.
+[[keys.command]]
+key = "prefix+."
+type = "popup"
+command = "~/.config/herdr/move-pane.sh"
+width = "60%"
+height = "40%"
+
+# Join another tab's panes into this tab, like tmux join-pane.
+[[keys.command]]
+key = "prefix+@"
+type = "popup"
+command = "~/.config/herdr/join-pane.sh"
+width = "60%"
+height = "40%"

@@ -2,7 +2,7 @@
 
 Route local apps by hostname and browse the webroot through a file explorer.
 Every directory URL is the explorer, so
-`http://localhost/fmr_gyms/agentic-debt/` opens that directory. Four extras ride
+`http://localhost:80/example/` opens that directory. Four extras ride
 on top of the file server: the explorer with search, rendered Markdown, rendered
 JSON, and Inspect AI eval logs.
 
@@ -249,7 +249,7 @@ index index.html /__explorer.html;
 
 A directory serves its own `index.html` when it has one, which the Inspect
 embedded viewer needs. Otherwise nginx falls back to the explorer page, so the
-URL stays `/fmr_gyms/agentic-debt/` and the page reads its path from
+URL stays `/example/` and the page reads its path from
 `location.pathname`. nginx cannot template its own autoindex output, which is
 why the explorer replaces the listing rather than restyling it.
 

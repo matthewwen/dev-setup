@@ -254,7 +254,7 @@ const state = {
 
 const EXT_ICON = {
   md: "📝", markdown: "📝", txt: "📄", log: "🪵",
-  json: "🔢", jsonl: "🔢", ndjson: "🔢", yaml: "⚙️", yml: "⚙️", toml: "⚙️", conf: "⚙️", ini: "⚙️",
+  json: "🔢", jsonl: "🔢", ndjson: "🔢", ipynb: "📓", yaml: "⚙️", yml: "⚙️", toml: "⚙️", conf: "⚙️", ini: "⚙️",
   py: "🐍", sh: "🐚", bash: "🐚", zsh: "🐚", js: "📜", mjs: "📜", ts: "📜", html: "🌐", css: "🎨",
   png: "🖼️", jpg: "🖼️", jpeg: "🖼️", gif: "🖼️", svg: "🖼️", pdf: "📕",
   eval: "🧪", zip: "🗜️", tar: "🗜️", gz: "🗜️", csv: "📊", tsv: "📊", parquet: "📊",
@@ -279,7 +279,7 @@ function when(ts) {
 }
 
 // Viewer-backed types open in the browser; the rest are raw downloads.
-const RENDERED = /\.(md|markdown|mdx|json|jsonl|ndjson|eval|html|htm|txt|log|out|err|yaml|yml|png|jpe?g|gif|svg|pdf|csv|tsv)$/i;
+const RENDERED = /\.(md|markdown|mdx|json|jsonl|ndjson|ipynb|eval|html|htm|txt|log|out|err|yaml|yml|png|jpe?g|gif|svg|pdf|csv|tsv)$/i;
 const previewable = url => RENDERED.test(url);
 
 function offline() {

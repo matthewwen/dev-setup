@@ -97,11 +97,12 @@ HOSTS_CONF="$(cd "$(dirname "$HOSTS_CONF")" && pwd -P)/$(basename "$HOSTS_CONF")
 
 RENDERED=(
   conf/nginx.conf conf/proxy-dev.conf conf/maps.conf
-  conf/md.conf conf/json.conf conf/text.conf
+  conf/md.conf conf/json.conf conf/ipynb.conf conf/text.conf
   conf/inspect.conf conf/explorer.conf
 )
 LINKED=(
-  html/md-viewer.html html/json-viewer.html html/text-viewer.html html/explorer.html
+  html/md-viewer.html html/md-render.js html/json-viewer.html html/ipynb-viewer.html
+  html/text-viewer.html html/explorer.html
 )
 EXPLORER_CONFIG_DIR="${XDG_CONFIG_HOME:-${HOME}/.config}/nginx-explorer"
 EXPLORER_TOKEN_FILE="${EXPLORER_CONFIG_DIR}/edit-token"

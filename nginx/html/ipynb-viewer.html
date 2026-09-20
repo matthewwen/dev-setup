@@ -1,20 +1,22 @@
 <!DOCTYPE html>
 <!--
-  Markdown viewer shim served by /etc/nginx/md.conf.
-  nginx rewrites any request for *.md to this page. The page fetches the same
-  path with ?raw=1 and renders it. No network access and no third-party code.
+  Jupyter notebook viewer shim served by ipynb.conf.
+  nginx rewrites a browser navigation to *.ipynb to this page. The page fetches
+  the same path with ?raw=1, parses the notebook JSON, and renders cells:
+  Markdown through the shared /__md/render.js, code with its highlighter, and
+  outputs as text, HTML, or images. No network access and no third-party code.
 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Markdown</title>
+<title>Notebook</title>
 <script>
   // Set the theme before first paint so the page never flashes the wrong one.
   document.documentElement.dataset.theme = localStorage.getItem("md-theme") ||
     (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
 </script>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='14'>&#128209;</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='14'>&#128211;</text></svg>">
 <style>
 :root {
   color-scheme: light dark;
@@ -204,6 +206,27 @@ article summary { cursor: pointer; font-weight: 600; }
   body { font-size: 11pt; }
   main { display: block; padding: 0; }
 }
+
+/* ---------- notebook ---------- */
+#meta { margin: 0 0 20px; font-family: var(--mono); font-size: 12px; color: var(--fg-muted); }
+.cell { display: flex; gap: 12px; margin: 0 0 14px; }
+.gutter {
+  flex: 0 0 64px; padding-top: 12px; text-align: right;
+  font-family: var(--mono); font-size: 11.5px; color: var(--fg-muted); white-space: nowrap;
+}
+.cell.md .gutter { visibility: hidden; }
+.cell-body { flex: 1 1 auto; min-width: 0; }
+.cell.md .cell-body { padding: 4px 0; }
+.cell.code pre { margin: 0; }
+.outputs { margin: 6px 0 0; padding-left: 12px; border-left: 3px solid var(--border); }
+.out { margin: 4px 0; overflow-x: auto; }
+.out pre { margin: 0; padding: 6px 0; background: none; border: 0; font-size: 13px; }
+.out.err pre { color: var(--del); }
+.outlabel { font-family: var(--mono); font-size: 11px; color: var(--fg-muted); margin: 6px 0 2px; }
+.out img { max-width: 100%; display: block; }
+.out.html table { border-collapse: collapse; font-size: 13px; }
+.out.html th, .out.html td { padding: 3px 10px; border: 1px solid var(--border); }
+.out.html th { background: var(--bg-soft); }
 </style>
 </head>
 <body>
@@ -216,13 +239,93 @@ article summary { cursor: pointer; font-weight: 600; }
 <main>
   <nav id="toc" class="hidden"><div>Contents</div></nav>
   <article>
-    <div id="frontmatter" class="hidden"></div>
+    <div id="meta"></div>
     <div id="body">Loading&hellip;</div>
   </article>
 </main>
 <script src="/__md/render.js"></script>
 <script>
 "use strict";
+
+/* ============================ notebook renderer ============================ */
+
+const text = v => Array.isArray(v) ? v.join("") : (v == null ? "" : String(v));
+const ANSI = /\x1b\[[0-9;]*[A-Za-z]/g;
+
+function notebookLanguage(nb) {
+  const m = nb.metadata || {};
+  return (m.kernelspec && m.kernelspec.language) || (m.language_info && m.language_info.name) || "python";
+}
+
+function renderNotebook(nb) {
+  const lang = notebookLanguage(nb);
+  return (Array.isArray(nb.cells) ? nb.cells : []).map(c => renderCell(c, lang)).join("\n");
+}
+
+function renderCell(c, lang) {
+  const s = text(c.source);
+  if (c.cell_type === "markdown") {
+    return '<section class="cell md"><div class="gutter"></div><div class="cell-body">' +
+      renderMarkdown(s).html + "</div></section>";
+  }
+  if (c.cell_type !== "code") {
+    return '<section class="cell raw"><div class="gutter">raw</div><div class="cell-body"><pre><code>' +
+      esc(s) + "</code></pre></div></section>";
+  }
+  const n = c.execution_count;
+  let html = '<section class="cell code"><div class="gutter">In [' + (n == null ? " " : n) + ']</div><div class="cell-body">' +
+    '<pre><button class="copy">copy</button><span class="lang">' + esc(lang) + "</span><code>" +
+    highlight(s, lang) + "</code></pre>";
+  const outs = (c.outputs || []).map(renderOutput).filter(Boolean);
+  if (outs.length) html += '<div class="outputs">' + outs.join("") + "</div>";
+  return html + "</div></section>";
+}
+
+function renderOutput(o) {
+  switch (o.output_type) {
+    case "stream":
+      return '<div class="out' + (o.name === "stderr" ? " err" : "") + '"><pre>' + esc(text(o.text)) + "</pre></div>";
+    case "error": {
+      const tb = (o.traceback || []).join("\n").replace(ANSI, "");
+      return '<div class="out err"><pre>' + esc(tb || (o.ename + ": " + o.evalue)) + "</pre></div>";
+    }
+    case "execute_result":
+    case "display_data":
+      return renderData(o.data || {}, o.execution_count);
+    default:
+      return "";
+  }
+}
+
+const IMAGE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"];
+
+function renderData(d, n) {
+  const label = n != null ? '<div class="outlabel">Out [' + n + "]</div>" : "";
+  if (d["text/html"]) return '<div class="out html">' + label + sanitize(text(d["text/html"])) + "</div>";
+  for (const t of IMAGE_TYPES) {
+    if (d[t]) return '<div class="out">' + label + '<img src="data:' + t + ";base64," + text(d[t]).replace(/\s/g, "") + '"></div>';
+  }
+  if (d["image/svg+xml"]) {
+    return '<div class="out">' + label + '<img src="data:image/svg+xml;charset=utf-8,' +
+      encodeURIComponent(text(d["image/svg+xml"])) + '"></div>';
+  }
+  if (d["text/markdown"]) return '<div class="out">' + label + renderMarkdown(text(d["text/markdown"])).html + "</div>";
+  if (d["text/plain"] != null) return '<div class="out">' + label + "<pre>" + esc(text(d["text/plain"])) + "</pre></div>";
+  return "";
+}
+
+// Notebook HTML outputs come from the kernel, so drop anything that runs code.
+function sanitize(html) {
+  if (typeof DOMParser === "undefined") return html;
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  doc.querySelectorAll("script, iframe, object, embed, link, meta, base, form").forEach(el => el.remove());
+  doc.querySelectorAll("*").forEach(el => {
+    for (const a of [...el.attributes]) {
+      if (/^on/i.test(a.name) || /^\s*javascript:/i.test(a.value)) el.removeAttribute(a.name);
+    }
+  });
+  return doc.body.innerHTML;
+}
 
 /* ================================= page ================================= */
 
@@ -239,7 +342,7 @@ document.title = name;
     acc += "/" + p;
     bits.push(k === parts.length - 1 ? "<b>" + esc(p) + "</b>" : '<a href="' + acc + '/">' + esc(p) + "</a>");
   });
-  el.innerHTML = bits.join('<span> &rsaquo; </span>');
+  el.innerHTML = bits.join("<span> &rsaquo; </span>");
 })();
 
 document.getElementById("rawBtn").href = path + "?raw=1";
@@ -256,13 +359,12 @@ document.getElementById("tocBtn").onclick = () => {
   localStorage.setItem("md-toc", tocEl.classList.contains("hidden") ? "0" : "1");
 };
 
-// Rendering a very large document blocks the page, so ask first and offer the
-// buffered text viewer, which reads the file in range requests.
-const BIG_BYTES = 2 * 1024 * 1024;
+// Embedded images make notebooks large. Ask before parsing a very big one.
+const BIG_BYTES = 8 * 1024 * 1024;
 
 function tooBig(bytes) {
   document.getElementById("body").innerHTML =
-    '<div class="error">This file is ' + (bytes / 1048576).toFixed(1) + " MiB.\n" +
+    '<div class="error">This notebook is ' + (bytes / 1048576).toFixed(1) + " MiB.\n" +
     "Rendering it whole would block the page.\n\n" +
     '<a href="' + path + '?view=text">Open the buffered text viewer</a>  ·  ' +
     '<a href="' + path + '?raw=1">Raw</a>  ·  ' +
@@ -280,15 +382,14 @@ fetch(path + "?raw=1", { method: "HEAD", cache: "no-store" })
 
 function load() {
   fetch(path + "?raw=1", { cache: "no-store" })
-  .then(r => r.ok ? r.text() : Promise.reject(new Error(r.status + " " + r.statusText)))
-  .then(text => {
-    const { fm, html } = renderMarkdown(text);
-    document.getElementById("body").innerHTML = html;
-    if (fm) {
-      const box = document.getElementById("frontmatter");
-      box.textContent = fm;
-      box.classList.remove("hidden");
-    }
+  .then(r => r.ok ? r.json() : Promise.reject(new Error(r.status + " " + r.statusText)))
+  .then(nb => {
+    const m = nb.metadata || {};
+    const kernel = (m.kernelspec && m.kernelspec.display_name) || notebookLanguage(nb);
+    const cells = Array.isArray(nb.cells) ? nb.cells.length : 0;
+    document.getElementById("meta").textContent =
+      kernel + " · " + cells + " cells · nbformat " + (nb.nbformat || "?") + "." + (nb.nbformat_minor || "?");
+    document.getElementById("body").innerHTML = renderNotebook(nb);
     buildToc();
     wireCopy();
     if (location.hash) document.querySelector(decodeURIComponent(location.hash))?.scrollIntoView();
@@ -301,21 +402,11 @@ function load() {
 }
 
 function buildToc() {
-  const shown = headings.filter(h => h.lvl >= 2 && h.lvl <= 4);
+  const shown = headings.filter(h => h.lvl >= 1 && h.lvl <= 3);
   if (shown.length < 3 || localStorage.getItem("md-toc") === "0") return;
   tocEl.insertAdjacentHTML("beforeend", shown.map(h =>
-    '<a class="lvl' + h.lvl + '" href="#' + h.id + '">' + esc(h.text) + "</a>").join(""));
+    '<a class="lvl' + (h.lvl + 1) + '" href="#' + h.id + '">' + esc(h.text) + "</a>").join(""));
   tocEl.classList.remove("hidden");
-
-  const links = new Map([...tocEl.querySelectorAll("a")].map(a => [a.getAttribute("href").slice(1), a]));
-  const obs = new IntersectionObserver(entries => {
-    entries.forEach(e => {
-      if (!e.isIntersecting) return;
-      links.forEach(a => a.classList.remove("active"));
-      links.get(e.target.id)?.classList.add("active");
-    });
-  }, { rootMargin: "-70px 0px -75% 0px" });
-  shown.forEach(h => { const el = document.getElementById(h.id); if (el) obs.observe(el); });
 }
 
 function wireCopy() {

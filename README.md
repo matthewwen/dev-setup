@@ -54,7 +54,8 @@ export PATH="$MR_WS/bin/setups:$PATH"          # make your work scripts bare-run
 This nginx setup gives local agent work a browsable, searchable webroot:
 
 - file explorer with content and filename search
-- raw files plus rendered Markdown, JSON, text, and Inspect AI eval logs
+- raw files plus rendered Markdown, JSON, Jupyter notebooks, text, and Inspect
+  AI eval logs
 - authenticated file create, edit, directory creation, and deletion through
   `/__api/files`
 - a persistent Explorer API managed by `nginx-explorer.service`

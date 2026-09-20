@@ -23,8 +23,11 @@ launchd/     launch agent for the explorer API (macOS)
 - `conf/proxy-dev.conf` — shared proxy headers, including websockets.
 - `conf/maps.conf` — `$render_page`, which separates browser navigations from
   raw fetches. Included in the `http` block.
-- `conf/explorer.conf`, `conf/md.conf`, `conf/json.conf`, `conf/text.conf`,
-  `conf/inspect.conf` — feature snippets included in the default server.
+- `conf/explorer.conf`, `conf/md.conf`, `conf/json.conf`, `conf/ipynb.conf`,
+  `conf/text.conf`, `conf/inspect.conf` — feature snippets included in the
+  default server.
+- `html/md-render.js` — Markdown renderer shared by the Markdown and notebook
+  viewers, served at `/__md/render.js`.
 
 On Linux nginx runs as `user root`, so a webroot symlinked to a build directory
 under `$HOME` serves without chmod. With Homebrew on macOS nginx runs as the
@@ -119,6 +122,7 @@ Entry points after install:
 | `http://localhost/<dir>/` | file explorer showing that directory |
 | `http://localhost/<file>.md` | rendered Markdown |
 | `http://localhost/<file>.json` | rendered JSON |
+| `http://localhost/<file>.ipynb` | rendered Jupyter notebook |
 | `http://localhost/<file>.eval` | Inspect AI log viewer |
 | `http://localhost/<file>.log` | buffered text viewer |
 | `http://localhost/__raw/<path>` | plain nginx index and raw bytes |
@@ -383,6 +387,17 @@ without it, browsing and name search still work.
 | `/__api/health` | — | `{ok, root, ripgrep}` |
 | `/__api/list` | `path`, `dirs=1` | one directory level, dirs then files |
 | `/__api/search` | `q`, `mode`, `scope`, `glob`, `regex`, `case` | matches grouped by file |
+
+## Notebooks
+
+Opening a `.ipynb` file in the browser renders the notebook. Markdown cells go
+through the shared renderer, code cells get the same highlighter with an
+`In [n]` gutter, and outputs render as text, sanitized HTML (pandas tables),
+images, or error tracebacks with ANSI codes stripped. The Raw button and
+`?raw=1` return the notebook JSON. Notebooks over 8 MiB, usually from embedded
+images, ask before rendering and offer the buffered text viewer.
+
+The viewer is read only. Run cells and edit in Jupyter or VS Code.
 
 ## Large files
 

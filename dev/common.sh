@@ -347,6 +347,7 @@ sync_dir() {
 # cleanup / bye
 # ==============================================================================
 cleanup() {
+    (( $+functions[_cleanup_pre_hook] )) && _cleanup_pre_hook
     tmux ls 2>/dev/null | grep -v "workspace" | awk '{print substr($1, 0, length($1))}' | while read line; do tmux kill-session -t $line; done
     wait
 }

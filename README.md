@@ -87,7 +87,7 @@ the tmux-style keybindings in `herdr/config.toml` with:
 | `sync_command <host> [dest]` | rsync current directory to a remote SSH host |
 | `start_tmux_session <name> <cmd>` | create/replace a tmux session running a command |
 | `work [--host <host>]` | open workspace/terminal/ssh tmux sessions |
-| `cleanup` | kill all dev tmux sessions |
+| `cleanup` | kill all dev tmux sessions; on macOS, save tmux state first for tmux-resurrect |
 | `bye` | cleanup + kill tmux server |
 | `edit <work-script>` | edit a work script; creates it in `bin/setups` if absent |
 | `nginxctl on\|off\|restart\|status` | manage the nginx web server and explorer API |

@@ -25,6 +25,14 @@ agent() {
     tmux a -t agent
 }
 
+# Save tmux state before cleanup so tmux-resurrect can restore it later.
+_cleanup_pre_hook() {
+    local save="$HOME/.tmux/plugins/tmux-resurrect/scripts/save.sh"
+    tmux ls &>/dev/null || return 0
+    [[ -f "$save" ]] || return 0
+    bash "$save" quiet 2>/dev/null || true
+}
+
 
 # ==============================================================================
 # Terminal colours

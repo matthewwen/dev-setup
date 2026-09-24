@@ -7,7 +7,7 @@ import { SearchOptionsBar, SearchResults, type SearchOptionsValue } from "./Sear
 import { Preview, type PreviewTarget } from "./Preview";
 import { useKeys } from "./useKeys";
 import { matchRegex } from "./highlight";
-import { previewable } from "./format";
+import { opensInPreview, previewable } from "./format";
 import { useDebounced } from "../../shared/FindBox";
 import "./Explorer.css";
 
@@ -249,9 +249,14 @@ export function Explorer() {
       return;
     }
     // With the pane open, the new selection above already moves the preview.
-    if (!previewOpen) {
-      location.href = previewable(e.url) ? e.url : `${e.url}?raw=1`;
+    if (previewOpen) {
+      return;
     }
+    if (opensInPreview(e.url)) {
+      setPreviewOpen(true);
+      return;
+    }
+    location.href = previewable(e.url) ? e.url : `${e.url}?raw=1`;
   }
 
   function togglePreview() {

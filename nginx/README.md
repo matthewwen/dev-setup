@@ -415,7 +415,8 @@ The viewer is read only. Run cells and edit in Jupyter or VS Code.
 
 ## Large files
 
-`conf/text.conf` renders `.log`, `.txt`, `.out`, `.err`, `.csv`, and `.tsv` with
+`conf/text.conf` renders `.log`, `.txt`, `.out`, `.err`, `.csv`, `.tsv`, and source and config
+files (`.go`, `.py`, `.ts`, `.tsx`, `.jsx`, `.sh`, `.bash`, `.zsh`, `.yaml`, `.yml`, `.toml`) with
 the text viewer (`src/viewers/TextViewer.tsx`), which reads the file in 256 KiB HTTP range requests
 instead of downloading it. nginx answers ranges natively, so file size stops
 mattering:
@@ -438,8 +439,9 @@ Any path opens in the buffered viewer with `?view=text`.
 
 ## Inspect AI logs
 
-Opening a `.eval` file in the browser opens it in the Inspect log viewer. One
-shared copy of that viewer answers every log:
+Opening a `.eval` file in the browser opens it in the Inspect log viewer. In the
+file explorer, a `.eval` file opens in the preview pane. One shared copy of that
+viewer answers every log:
 
 ```bash
 ./scripts/inspect.sh viewer     # writes <webroot>/../inspect-view

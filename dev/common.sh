@@ -86,6 +86,20 @@ mr_path() {
 
 compdef _mr_completion mr_path
 
+html() {
+    _common $(html_path) "$@"
+}
+
+_html_completion() {
+    _common_completion $(html_path)
+}
+
+compdef _html_completion html
+
+html_path() {
+    echo "$HOME/html"
+}
+
 workspace() {
     start_tmux_session "workspace"
     tmux a -t workspace

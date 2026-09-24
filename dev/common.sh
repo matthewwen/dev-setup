@@ -144,10 +144,31 @@ _git-tmp-save() {
     fi
 }
 
+_git-wt-link-claude() {
+    local wt_dir=${1}
+    [[ -d "$wt_dir" ]] || return 0
+    if [[ -L "$wt_dir/.claude" ]]; then
+        echo "skip: $wt_dir/.claude is a symlink" >&2
+        return 0
+    fi
+    local link="$wt_dir/.claude/handoffs"
+    if [[ -e "$link" && ! -L "$link" ]]; then
+        echo "skip: $link exists and is not a symlink" >&2
+        return 0
+    fi
+    local target="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/.claude/handoffs"
+    mkdir -p "$target" "$wt_dir/.claude"
+    local rel
+    rel=$(realpath --relative-to="$wt_dir/.claude" "$target" 2>/dev/null \
+        || grealpath --relative-to="$wt_dir/.claude" "$target" 2>/dev/null) && target=$rel
+    ln -sfn "$target" "$link"
+}
+
 git-add-worktree() {
     local dir=${1}
     _git-tmp-save
     git worktree add .claude/worktrees/${dir} ${2}
+    _git-wt-link-claude .claude/worktrees/${dir}
 }
 
 git-rm-worktree() {
@@ -164,6 +185,7 @@ git-to-worktree() {
     local did_commit=$?
     (
         [[ ! -d $wt_dir ]] && git-add-worktree $wt
+        _git-wt-link-claude $wt_dir
         cd $wt_dir
         git reset --hard ${branch}
     )
@@ -182,6 +204,24 @@ git-from-worktree() {
         git reset HEAD~1
         (cd .claude/worktrees/${wt} && git reset HEAD~1)
     fi
+}
+
+# tmp: backfill handoffs links in existing worktrees. Remove after rollout.
+git-backfill-wt() {
+    local roots=()
+    if [[ ${1} == --all ]]; then
+        roots=(${DEV_WS}/*(-/N))
+    else
+        roots=($(dirname "$(git rev-parse --path-format=absolute --git-common-dir)"))
+    fi
+    local r wt
+    for r in $roots; do
+        [[ -d "$r/.claude/worktrees" ]] || continue
+        for wt in "$r"/.claude/worktrees/*(-/N); do
+            [[ -e "$wt/.git" ]] || continue
+            (cd "$r" && _git-wt-link-claude "$wt")
+        done
+    done
 }
 
 _git_wt_completion() {

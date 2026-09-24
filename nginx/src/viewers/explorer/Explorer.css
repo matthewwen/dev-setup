@@ -1,0 +1,117 @@
+/* Full-viewport layout, scoped to .explorer. The explorer has its own
+ * two-row header (tree/up/preview/theme/raw, then search options) instead
+ * of the shared Toolbar, so it does not use header.toolbar. */
+.explorer {
+  display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+}
+.explorer > header { flex: 0 0 auto; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+.explorer .row { display: flex; gap: 8px; align-items: center; }
+.explorer .row + .row { margin-top: 8px; }
+.explorer #crumbs {
+  flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline;
+  font-family: var(--mono); font-size: 13px; color: var(--fg-muted);
+}
+.explorer #crumbs a { padding: 1px 3px; border-radius: 4px; }
+.explorer #crumbs b { padding: 1px 3px; color: var(--fg); }
+.explorer #crumbs span { color: var(--border); }
+.explorer #q {
+  flex: 1 1 320px; min-width: 160px; padding: 7px 11px;
+  font-family: var(--mono); font-size: 13px;
+  color: var(--fg); background: var(--bg-soft);
+  border: 1px solid var(--border); border-radius: 8px;
+}
+.explorer #q:focus { outline: 2px solid var(--link); outline-offset: -1px; }
+.explorer .seg { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.explorer .seg button {
+  padding: 6px 10px; font-size: 12px; font-family: var(--sans);
+  color: var(--fg-muted); background: var(--bg-soft); border: 0; cursor: pointer;
+}
+.explorer .seg button + button { border-left: 1px solid var(--border); }
+.explorer .seg button.on { color: #fff; background: var(--link); }
+.explorer .hint { font-size: 12px; color: var(--fg-muted); }
+.explorer label.chk { display: inline-flex; gap: 4px; align-items: center; font-size: 12px; color: var(--fg-muted); cursor: pointer; }
+.explorer .row2 input[type="text"] {
+  width: 140px; padding: 4px 8px; font-family: var(--mono); font-size: 12px;
+  color: var(--fg); background: var(--bg-soft);
+  border: 1px solid var(--border); border-radius: 6px;
+}
+
+/* -------------------------------- panes -------------------------------- */
+.explorer main { flex: 1 1 auto; display: flex; min-height: 0; }
+.explorer #tree {
+  flex: 0 0 240px; overflow: auto; padding: 8px 4px 40px;
+  background: var(--bg-soft); border-right: 1px solid var(--border);
+  font-family: var(--mono); font-size: 12.5px;
+}
+.explorer #tree.hidden { display: none; }
+.explorer .tnode { padding-left: 12px; }
+.explorer .trow {
+  display: flex; gap: 4px; align-items: center;
+  padding: 2px 6px; border-radius: 5px; cursor: pointer; white-space: nowrap;
+}
+.explorer .trow:hover { background: var(--bg-inset); }
+.explorer .trow.here { background: var(--sel); color: var(--fg); }
+.explorer .tw { width: 10px; flex: 0 0 auto; color: var(--fg-muted); }
+.explorer .tname { overflow: hidden; text-overflow: ellipsis; }
+
+.explorer #list { flex: 1 1 auto; overflow: auto; min-width: 0; }
+.explorer #preview {
+  flex: 0 0 46%; min-width: 0; display: none;
+  border-left: 1px solid var(--border); background: var(--bg-soft);
+}
+.explorer #preview.on { display: flex; flex-direction: column; }
+.explorer #preview .phead {
+  display: flex; gap: 8px; align-items: center;
+  padding: 6px 10px; border-bottom: 1px solid var(--border);
+  font-family: var(--mono); font-size: 12px; color: var(--fg-muted);
+}
+.explorer #preview .phead .pname { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg); }
+.explorer #preview iframe { flex: 1 1 auto; width: 100%; border: 0; background: var(--bg); }
+
+/* -------------------------------- table -------------------------------- */
+.explorer table { width: 100%; border-collapse: collapse; }
+.explorer thead th {
+  position: sticky; top: 0; z-index: 2;
+  padding: 6px 12px; text-align: left; font-size: 11px; font-weight: 600;
+  letter-spacing: .04em; text-transform: uppercase;
+  color: var(--fg-muted); background: var(--bg);
+  border-bottom: 1px solid var(--border); cursor: pointer; user-select: none;
+}
+.explorer thead th.num { text-align: right; }
+.explorer tbody td {
+  padding: 4px 12px; border-bottom: 1px solid var(--bg-inset);
+  font-size: 13px; white-space: nowrap;
+}
+.explorer tbody td.name { font-family: var(--mono); max-width: 0; width: 60%; overflow: hidden; text-overflow: ellipsis; }
+.explorer tbody td.num { text-align: right; font-family: var(--mono); font-size: 12px; color: var(--fg-muted); }
+.explorer tbody td.when { font-size: 12px; color: var(--fg-muted); }
+.explorer tbody tr { cursor: pointer; }
+.explorer tbody tr:hover { background: var(--bg-soft); }
+.explorer tbody tr.sel { background: var(--sel); }
+.explorer .ico { display: inline-block; width: 18px; }
+.explorer .dirname { color: var(--dir); font-weight: 600; }
+.explorer .lnk::after { content: " \2197"; color: var(--fg-muted); font-size: 11px; }
+
+/* ------------------------------- results ------------------------------- */
+.explorer #results { padding: 12px 14px 60px; }
+.explorer .file { margin-bottom: 12px; background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.explorer .file.sel { border-color: var(--link); }
+.explorer .fhead {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline;
+  padding: 7px 11px; background: var(--bg-inset); border-bottom: 1px solid var(--border);
+}
+.explorer .fhead .fname { font-family: var(--mono); font-size: 13px; font-weight: 600; }
+.explorer .fhead .fdir { font-family: var(--mono); font-size: 11px; color: var(--fg-muted); }
+.explorer .fhead .spacer { flex: 1 1 auto; }
+.explorer .fhead .fmeta { font-size: 11px; color: var(--fg-muted); }
+.explorer .line { display: flex; gap: 10px; padding: 2px 11px; font-family: var(--mono); font-size: 12.5px; white-space: pre-wrap; word-break: break-word; }
+.explorer .line:hover { background: var(--bg-inset); }
+.explorer .line .no { flex: 0 0 46px; text-align: right; color: var(--fg-muted); user-select: none; }
+.explorer .empty { padding: 8px 11px; font-size: 12px; color: var(--fg-muted); }
+
+.explorer footer {
+  flex: 0 0 auto; display: flex; gap: 14px; align-items: center;
+  padding: 5px 14px; font-size: 12px; color: var(--fg-muted);
+  background: var(--bg-soft); border-top: 1px solid var(--border);
+}
+.explorer footer .spacer { flex: 1 1 auto; }

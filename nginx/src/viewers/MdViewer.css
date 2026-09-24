@@ -1,0 +1,27 @@
+.md-viewer main {
+  display: flex; gap: 32px; max-width: 1240px; margin: 0 auto; padding: 32px 20px 120px;
+}
+.md-viewer #toc {
+  flex: 0 0 220px; position: sticky; top: 76px; align-self: flex-start;
+  max-height: calc(100vh - 120px); overflow-y: auto;
+  font-size: 13px; line-height: 1.5;
+  border-left: 1px solid var(--border); padding-left: 14px;
+}
+.md-viewer #toc div {
+  color: var(--fg-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+  font-size: 11px; margin-bottom: 8px;
+}
+.md-viewer #toc a { display: block; padding: 3px 0; color: var(--fg-muted); }
+.md-viewer #toc a:hover { color: var(--fg); text-decoration: none; }
+.md-viewer #toc a.lvl3 { padding-left: 12px; }
+.md-viewer #toc a.lvl4 { padding-left: 24px; font-size: 12px; }
+.md-viewer #toc a.active { color: var(--link); font-weight: 600; }
+.md-viewer article { flex: 1 1 auto; min-width: 0; max-width: 860px; }
+.md-viewer main.no-toc article { margin: 0 auto; }
+@media (max-width: 900px) {
+  .md-viewer #toc { display: none; }
+  .md-viewer main { padding-top: 24px; }
+}
+@media print {
+  .md-viewer main { display: block; padding: 0; }
+}

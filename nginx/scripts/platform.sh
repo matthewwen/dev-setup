@@ -6,6 +6,7 @@
 #   NGINX_PKG           brew | apt | rpm | source   (how nginx was installed)
 #   NGINX_PREFIX        Homebrew prefix on macOS, else empty
 #   NGINX_DIR           config directory, from `nginx -V` --conf-path
+#   NGINX_PKG_DIR       this repo's owned directory, NGINX_DIR/dev-setup
 #   NGINX_ROOT          webroot
 #   NGINX_LOG_DIR       from --error-log-path
 #   NGINX_PID           from --pid-path
@@ -112,6 +113,7 @@ _nginx_detect() {
   fi
 
   INSPECT_VIEWER_DIR="${INSPECT_VIEWER_DIR:-$(dirname "$NGINX_ROOT")/inspect-view}"
+  NGINX_PKG_DIR="${NGINX_PKG_DIR:-${NGINX_DIR}/dev-setup}"
 
   if [[ -z "${NGINX_PORT:-}" ]]; then
     NGINX_PORT=""
@@ -132,7 +134,7 @@ _nginx_detect() {
     fi
   fi
 
-  export NGINX_OS NGINX_PKG NGINX_PREFIX NGINX_DIR NGINX_ROOT NGINX_LOG_DIR \
+  export NGINX_OS NGINX_PKG NGINX_PREFIX NGINX_DIR NGINX_PKG_DIR NGINX_ROOT NGINX_LOG_DIR \
     NGINX_PID NGINX_MODULES_DIR INSPECT_VIEWER_DIR NGINX_PORT NGINX_BASE_URL
 }
 
@@ -148,6 +150,7 @@ nginx_describe() {
   esac
   echo "Platform  ${NGINX_OS}, nginx from ${where}"
   echo "  conf    ${NGINX_DIR}"
+  echo "  pkg dir ${NGINX_PKG_DIR}"
   echo "  webroot ${NGINX_ROOT}"
   echo "  logs    ${NGINX_LOG_DIR}"
   echo "  pid     ${NGINX_PID}"

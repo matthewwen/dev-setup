@@ -9,6 +9,7 @@ set -euo pipefail
 #   ./nginx/install.sh --port <n>            listen port (80 Linux, 8080 macOS)
 #   ./nginx/install.sh --show                print the detected layout and exit
 #   ./nginx/install.sh --no-services         write the configs only
+#   ./nginx/install.sh --uninstall           remove dev-setup/, restore the backup
 #   HOSTS_CONF=<file> ./nginx/install.sh     same, through the environment
 #
 # Host-based routes are per machine, so hosts.conf takes an override. Without
@@ -18,13 +19,16 @@ set -euo pipefail
 # brew services + launchd). scripts/platform.sh reads the layout from
 # `nginx -V`; NGINX_DIR, NGINX_ROOT, NGINX_PORT, and friends override it.
 #
-# Every conf lands in the nginx config directory under its base name, with the
-# @...@ fields filled in. The viewer pages are symlinked.
+# Everything the repo owns is copied — no symlinks back into the checkout — so
+# an upgrade is `git pull` then a rerun of this script. The confs land in the
+# nginx config directory with the @...@ fields filled in; the built app lands
+# under dev-setup/app/ beside them.
 
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 HOSTS_CONF="${HOSTS_CONF:-}"
 SHOW_ONLY=0
 NO_SERVICES=0
+UNINSTALL=0
 PORT_ARG=""
 
 while (($#)); do
@@ -55,8 +59,12 @@ while (($#)); do
       NO_SERVICES=1
       shift
       ;;
+    --uninstall)
+      UNINSTALL=1
+      shift
+      ;;
     -h | --help)
-      sed -n '3,22p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '3,26p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *)
@@ -74,6 +82,19 @@ if ! command -v nginx >/dev/null 2>&1; then
   exit 1
 fi
 
+if ! command -v node >/dev/null 2>&1; then
+  echo "node is not installed. The app is built with it before install." >&2
+  echo "Run: mise use -g node@lts   or   brew install node" >&2
+  exit 1
+fi
+# build.mts and the tests run as TypeScript through node's type stripping,
+# which is on by default from 22.18 (22.x) and 23.6.
+if ! node -e 'const [a,b]=process.versions.node.split(".").map(Number); process.exit(a>23||(a===23&&b>=6)||(a===22&&b>=18)?0:1)'; then
+  echo "node $(node --version) is too old. The build needs node 22.18 or newer." >&2
+  echo "Run: mise use -g node@lts   or   brew upgrade node" >&2
+  exit 1
+fi
+
 # --port wins over the port of an installed config.
 [[ -n "$PORT_ARG" ]] && export NGINX_PORT="$PORT_ARG"
 # shellcheck source=scripts/platform.sh
@@ -82,32 +103,18 @@ source "${BASE_DIR}/scripts/platform.sh"
 
 nginx_describe
 if ((SHOW_ONLY)); then
+  if [[ -f "${NGINX_PKG_DIR}/manifest.json" ]]; then
+    echo "  installed manifest: ${NGINX_PKG_DIR}/manifest.json"
+    cat "${NGINX_PKG_DIR}/manifest.json"
+  else
+    echo "  not installed: ${NGINX_PKG_DIR}/manifest.json does not exist"
+  fi
   exit 0
 fi
 
 NGINX_DIR_BACKUP="${NGINX_DIR}/nginx.conf.pre-dev-setup"
 WEBROOT="$NGINX_ROOT"
-
-if [[ -z "$HOSTS_CONF" && -f "${BASE_DIR}/conf/hosts.local.conf" ]]; then
-  HOSTS_CONF="${BASE_DIR}/conf/hosts.local.conf"
-fi
-HOSTS_CONF="${HOSTS_CONF:-${BASE_DIR}/conf/hosts.conf}"
-[[ -f "$HOSTS_CONF" ]] || { echo "No such hosts file: ${HOSTS_CONF}" >&2; exit 1; }
-HOSTS_CONF="$(cd "$(dirname "$HOSTS_CONF")" && pwd -P)/$(basename "$HOSTS_CONF")"
-
-RENDERED=(
-  conf/nginx.conf conf/proxy-dev.conf conf/maps.conf
-  conf/md.conf conf/json.conf conf/ipynb.conf conf/text.conf
-  conf/inspect.conf conf/explorer.conf
-)
-LINKED=(
-  html/md-viewer.html html/md-render.js html/json-viewer.html html/ipynb-viewer.html
-  html/text-viewer.html html/explorer.html
-)
-EXPLORER_CONFIG_DIR="${XDG_CONFIG_HOME:-${HOME}/.config}/nginx-explorer"
-EXPLORER_TOKEN_FILE="${EXPLORER_CONFIG_DIR}/edit-token"
-HTML_LINK="${HOME}/html"
-RENDER_MARK="# dev-setup:rendered"
+PKG_DIR="$NGINX_PKG_DIR"
 
 # Homebrew's tree is user-owned, so no sudo there. Anything under /etc needs it.
 SUDO=""
@@ -117,10 +124,55 @@ if ((EUID != 0)) && [[ ! -w "$NGINX_DIR" ]]; then
 fi
 priv() { if [[ -n "$SUDO" ]]; then sudo "$@"; else "$@"; fi; }
 
-# realpath -m is GNU only; macOS falls back to readlink -f, then the input.
-abspath() {
-  realpath -m "$1" 2>/dev/null || readlink -f "$1" 2>/dev/null || echo "$1"
-}
+if ((UNINSTALL)); then
+  if [[ -d "$PKG_DIR" ]]; then
+    echo "Removing ${PKG_DIR}"
+    priv rm -rf "$PKG_DIR"
+  fi
+  if [[ -e "$NGINX_DIR_BACKUP" ]]; then
+    echo "Restoring ${NGINX_DIR}/nginx.conf from ${NGINX_DIR_BACKUP}"
+    priv rm -f "${NGINX_DIR}/nginx.conf"
+    priv mv "$NGINX_DIR_BACKUP" "${NGINX_DIR}/nginx.conf"
+    echo "Validating and reloading nginx..."
+    priv nginx -t -c "${NGINX_DIR}/nginx.conf"
+    if [[ "$NGINX_OS" == linux ]] && command -v systemctl >/dev/null 2>&1; then
+      priv systemctl reload nginx
+    elif [[ "$NGINX_PKG" == brew ]]; then
+      nginx -s reload 2>/dev/null || sudo nginx -s reload
+    else
+      echo "Reload nginx manually: nginx -s reload"
+    fi
+  else
+    echo "No backup at ${NGINX_DIR_BACKUP}; nginx.conf left as-is."
+  fi
+  if [[ "$NGINX_OS" == linux ]] && command -v systemctl >/dev/null 2>&1; then
+    systemctl --user disable --now nginx-explorer.service 2>/dev/null || true
+  elif [[ "$NGINX_OS" == macos ]]; then
+    launchctl bootout "gui/$(id -u)/com.dev-setup.nginx-explorer" >/dev/null 2>&1 || true
+  fi
+  echo "Done."
+  exit 0
+fi
+
+if [[ -z "$HOSTS_CONF" && -f "${BASE_DIR}/conf/hosts.local.conf" ]]; then
+  HOSTS_CONF="${BASE_DIR}/conf/hosts.local.conf"
+fi
+HOSTS_CONF="${HOSTS_CONF:-${BASE_DIR}/conf/hosts.conf}"
+[[ -f "$HOSTS_CONF" ]] || { echo "No such hosts file: ${HOSTS_CONF}" >&2; exit 1; }
+HOSTS_CONF="$(cd "$(dirname "$HOSTS_CONF")" && pwd -P)/$(basename "$HOSTS_CONF")"
+
+# Confs rendered under dev-setup/conf/. nginx.conf itself stays a top-level
+# file in NGINX_DIR, next to its one-time backup, so the revert instructions
+# in the README keep working unchanged.
+RENDERED=(
+  conf/proxy-dev.conf conf/maps.conf
+  conf/md.conf conf/json.conf conf/ipynb.conf conf/text.conf
+  conf/inspect.conf conf/explorer.conf
+)
+EXPLORER_CONFIG_DIR="${XDG_CONFIG_HOME:-${HOME}/.config}/nginx-explorer"
+EXPLORER_TOKEN_FILE="${EXPLORER_CONFIG_DIR}/edit-token"
+HTML_LINK="${HOME}/html"
+OLD_RENDER_MARK="# dev-setup:rendered"
 
 if [[ "$NGINX_OS" == macos && "$NGINX_PORT" -lt 1024 && $EUID -ne 0 ]]; then
   echo "Note: port ${NGINX_PORT} needs root on macOS. Start nginx with" >&2
@@ -136,14 +188,25 @@ MODULES_INCLUDE="# no load_module snippet directory on this install"
 if [[ -n "$NGINX_MODULES_DIR" ]]; then
   MODULES_INCLUDE="include ${NGINX_MODULES_DIR}/*.conf;"
 fi
+# A non-root nginx cannot create the temp dirs compiled into a packaged
+# binary, such as /var/lib/nginx/tmp. scripts/dev.sh sets NGINX_TEMP_DIR.
+TEMP_PATHS="# temp paths: compiled-in defaults"
+if [[ -n "${NGINX_TEMP_DIR:-}" ]]; then
+  mkdir -p "$NGINX_TEMP_DIR"
+  TEMP_PATHS=""
+  for kind in client_body proxy fastcgi uwsgi scgi; do
+    TEMP_PATHS+="${kind}_temp_path ${NGINX_TEMP_DIR}/${kind}; "
+  done
+fi
 
 render() {
   local src="$1"
-  echo "${RENDER_MARK} ${src}"
   sed \
     -e "s|@USER_DIRECTIVE@|${USER_DIRECTIVE}|g" \
     -e "s|@MODULES_INCLUDE@|${MODULES_INCLUDE}|g" \
+    -e "s|@TEMP_PATHS@|${TEMP_PATHS}|g" \
     -e "s|@NGINX_DIR@|${NGINX_DIR}|g" \
+    -e "s|@PKG_DIR@|${PKG_DIR}|g" \
     -e "s|@WEBROOT@|${WEBROOT}|g" \
     -e "s|@INSPECT_VIEWER_DIR@|${INSPECT_VIEWER_DIR}|g" \
     -e "s|@LOG_DIR@|${NGINX_LOG_DIR}|g" \
@@ -155,61 +218,98 @@ render() {
 priv mkdir -p "$NGINX_DIR" "$WEBROOT" "$NGINX_LOG_DIR"
 
 if [[ -e "${NGINX_DIR}/nginx.conf" && ! -L "${NGINX_DIR}/nginx.conf" && ! -e "${NGINX_DIR_BACKUP}" ]] \
-  && ! grep -q "^${RENDER_MARK}" "${NGINX_DIR}/nginx.conf" 2>/dev/null; then
+  && ! grep -q "^${OLD_RENDER_MARK}" "${NGINX_DIR}/nginx.conf" 2>/dev/null; then
   echo "Backing up nginx.conf to ${NGINX_DIR_BACKUP}"
   priv cp -a "${NGINX_DIR}/nginx.conf" "${NGINX_DIR_BACKUP}"
 fi
 
-# nginx.service usually runs with PrivateTmp=true, which gives the service its
-# own /tmp. A symlink into /tmp resolves for `nginx -t` and then fails on reload,
-# so copy such a file instead of linking it.
-PRIVATE_TMP="$(systemctl show nginx -p PrivateTmp --value 2>/dev/null || echo no)"
-WANTED=(hosts.conf)
-if [[ "$PRIVATE_TMP" == "yes" && "$HOSTS_CONF" == /tmp/* || "$HOSTS_CONF" == /var/tmp/* ]]; then
-  echo "Copying ${NGINX_DIR}/hosts.conf <- ${HOSTS_CONF}"
-  echo "  (the service runs with PrivateTmp, so a link into /tmp would not resolve)"
-  priv rm -f "${NGINX_DIR}/hosts.conf"
-  priv cp "$HOSTS_CONF" "${NGINX_DIR}/hosts.conf"
-else
-  echo "Linking ${NGINX_DIR}/hosts.conf -> ${HOSTS_CONF}"
-  priv ln -sfn "$HOSTS_CONF" "${NGINX_DIR}/hosts.conf"
+# Build the app when it is missing or older than its sources. Everything the
+# repo owns on the machine is a copy of dist/, so the build always runs before
+# the copy.
+NEED_BUILD=0
+if [[ ! -f "${BASE_DIR}/dist/app/app.js" ]]; then
+  NEED_BUILD=1
+elif [[ -n "$(find "${BASE_DIR}/src" "${BASE_DIR}/build.mts" "${BASE_DIR}/package.json" \
+    -newer "${BASE_DIR}/dist/app/app.js" 2>/dev/null)" ]]; then
+  NEED_BUILD=1
 fi
+if ((NEED_BUILD)); then
+  echo "Building the app (dist/ is missing or stale)..."
+  [[ -d "${BASE_DIR}/node_modules" ]] || (cd "$BASE_DIR" && npm install)
+  (cd "$BASE_DIR" && npm run build)
+fi
+
+# One-time cleanup of the previous flat layout: rendered confs carried a marker
+# comment, and the viewer pages and hosts.conf were symlinks into a checkout.
+# The link target can be any checkout, or the file given to --hosts, so match
+# the symlinks by the names the old layout used. Everything the repo owns now
+# lives under dev-setup/, copied.
+OLD_LINKS=(explorer.html md-viewer.html json-viewer.html ipynb-viewer.html text-viewer.html md-render.js hosts.conf)
+for name in "${OLD_LINKS[@]}"; do
+  entry="${NGINX_DIR}/${name}"
+  if [[ -L "$entry" ]]; then
+    echo "Removing old flat install: ${entry} -> $(readlink "$entry")"
+    priv rm -f "$entry"
+  fi
+done
+for entry in "${NGINX_DIR}"/*.conf; do
+  [[ -f "$entry" && ! -L "$entry" ]] || continue
+  [[ "$(basename "$entry")" == "nginx.conf" ]] && continue
+  if grep -q "^${OLD_RENDER_MARK}" "$entry" 2>/dev/null; then
+    echo "Removing old flat install: ${entry}"
+    priv rm -f "$entry"
+  fi
+done
+
+echo "Writing ${PKG_DIR}"
+priv rm -rf "$PKG_DIR"
+priv mkdir -p "${PKG_DIR}/conf" "${PKG_DIR}/app"
+
+echo "Copying ${PKG_DIR}/conf/hosts.conf <- ${HOSTS_CONF}"
+priv cp "$HOSTS_CONF" "${PKG_DIR}/conf/hosts.conf"
 
 for config in "${RENDERED[@]}"; do
   name="$(basename "$config")"
-  WANTED+=("$name")
-  echo "Writing ${NGINX_DIR}/${name}"
-  priv rm -f "${NGINX_DIR}/${name}"
-  render "${BASE_DIR}/${config}" | priv tee "${NGINX_DIR}/${name}" >/dev/null
+  render "${BASE_DIR}/${config}" | priv tee "${PKG_DIR}/conf/${name}" >/dev/null
 done
 
-for page in "${LINKED[@]}"; do
-  name="$(basename "$page")"
-  WANTED+=("$name")
-  echo "Linking ${NGINX_DIR}/${name}"
-  priv ln -sfn "${BASE_DIR}/${page}" "${NGINX_DIR}/${name}"
-done
+priv cp -r "${BASE_DIR}/dist/app/." "${PKG_DIR}/app/"
 
-# Drop files this repo installed earlier and no longer owns, such as a renamed
-# snippet. A link that points elsewhere, or a file without the marker, stays.
-for entry in "${NGINX_DIR}"/*.conf "${NGINX_DIR}"/*.html; do
-  [[ -e "$entry" || -L "$entry" ]] || continue
-  name="$(basename "$entry")"
-  ours=0
-  if [[ -L "$entry" ]]; then
-    target="$(abspath "$(readlink "$entry")")"
-    [[ "$target" == "${BASE_DIR}/"* ]] && ours=1
-    [[ "$target" == "$(abspath "$HOSTS_CONF")" ]] && continue
-  elif grep -q "^${RENDER_MARK} ${BASE_DIR}/" "$entry" 2>/dev/null; then
-    ours=1
-  fi
-  ((ours)) || continue
-  for wanted in "${WANTED[@]}"; do
-    [[ "$name" == "$wanted" ]] && continue 2
-  done
-  echo "Removing stale ${entry}"
-  priv rm -f "$entry"
-done
+echo "Writing ${NGINX_DIR}/nginx.conf"
+render "${BASE_DIR}/conf/nginx.conf" | priv tee "${NGINX_DIR}/nginx.conf" >/dev/null
+
+# Manifest of what this run installed, for `install.sh --show` and for telling
+# one checkout's install apart from another's.
+SHASUM=(sha256sum)
+command -v sha256sum >/dev/null 2>&1 || SHASUM=(shasum -a 256)
+GIT_SHA="$(git -C "$BASE_DIR" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+INSTALLED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+MANIFEST_TMP="$(mktemp)"
+{
+  echo "{"
+  echo "  \"package\": \"@dev-setup/nginx-viewers\","
+  echo "  \"source\": \"${BASE_DIR}\","
+  echo "  \"git\": \"${GIT_SHA}\","
+  echo "  \"installedAt\": \"${INSTALLED_AT}\","
+  echo "  \"hosts\": \"${HOSTS_CONF}\","
+  echo "  \"platform\": { \"os\": \"${NGINX_OS}\", \"pkg\": \"${NGINX_PKG}\", \"port\": ${NGINX_PORT}, \"webroot\": \"${WEBROOT}\" },"
+  echo "  \"render\": { \"NGINX_DIR\": \"${NGINX_DIR}\", \"PKG_DIR\": \"${PKG_DIR}\" },"
+  echo "  \"files\": {"
+  first=1
+  while IFS= read -r -d '' f; do
+    rel="${f#"${PKG_DIR}"/}"
+    sum="$("${SHASUM[@]}" "$f" | cut -d' ' -f1)"
+    ((first)) || echo ","
+    first=0
+    printf '    "%s": "sha256:%s"' "$rel" "$sum"
+  done < <(find "$PKG_DIR" -type f -print0 | sort -z)
+  echo
+  echo "  }"
+  echo "}"
+} > "$MANIFEST_TMP"
+priv cp "$MANIFEST_TMP" "${PKG_DIR}/manifest.json"
+priv chmod 644 "${PKG_DIR}/manifest.json"
+rm -f "$MANIFEST_TMP"
 
 echo "Validating nginx configuration..."
 priv nginx -t -c "${NGINX_DIR}/nginx.conf"

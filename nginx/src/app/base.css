@@ -1,0 +1,68 @@
+/* Body reset, toolbar chrome, and small shared classes. Every viewer's own
+ * stylesheet layers on top of this; layout and content rules stay with the
+ * viewer that needs them. */
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ---------- toolbar ----------
+ * Scoped to .toolbar (the shared Toolbar component) rather than the bare
+ * `header`/`#crumbs` elements, since the explorer builds its own header
+ * with a different layout and must not inherit this one. */
+header.toolbar {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  padding: 10px 20px;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: saturate(180%) blur(8px);
+  border-bottom: 1px solid var(--border);
+}
+.toolbar #crumbs {
+  flex: 1 1 260px; min-width: 0;
+  font-family: var(--mono); font-size: 13px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  color: var(--fg-muted);
+}
+.toolbar #crumbs b { color: var(--fg); font-weight: 600; }
+.btn {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  font-size: 12px; font-family: var(--sans);
+  color: var(--fg); background: var(--bg-soft);
+  border: 1px solid var(--border); border-radius: 6px;
+  cursor: pointer;
+}
+.btn:hover { background: var(--bg-inset); text-decoration: none; }
+.btn.on { color: #fff; background: var(--link); border-color: var(--link); }
+.find {
+  flex: 0 1 200px;
+  padding: 5px 9px;
+  font-family: var(--mono); font-size: 12px;
+  color: var(--fg); background: var(--bg-soft);
+  border: 1px solid var(--border); border-radius: 7px;
+}
+.find-hits { font-size: 12px; }
+mark { background: var(--mark); color: inherit; border-radius: 2px; }
+
+/* ---------- shared small pieces ---------- */
+kbd {
+  font-family: var(--mono); font-size: 11px; padding: 2px 5px;
+  border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px;
+  background: var(--bg-soft);
+}
+.card {
+  padding: 16px; font-family: var(--mono); font-size: 13px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border); border-radius: 8px;
+}
+.muted { color: var(--fg-muted); }
+.error { color: var(--del); }

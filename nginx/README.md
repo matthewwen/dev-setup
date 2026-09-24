@@ -9,25 +9,42 @@ JSON, and Inspect AI eval logs.
 ## Layout
 
 ```
-install.sh   renders conf/ and links html/ into the nginx config dir, then reloads
-conf/        nginx config templates; @...@ fields are filled at install time
-html/        viewer pages, symlinked into the config dir
-scripts/     helper commands (explorer.sh, explorer-server.py, inspect.sh)
+install.sh     builds the app, copies it and the rendered confs into the nginx config dir, then reloads
+package.json   the @dev-setup/nginx-viewers package: build, dev, check, test
+build.mts      esbuild driver; writes dist/app/
+src/           the React app, one component per viewer (TypeScript)
+test/          node:test suites and fixtures
+conf/          nginx config templates; @...@ fields are filled at install time
+scripts/       helper commands (dev.sh, explorer.sh, explorer-server.py, inspect.sh, service.sh)
 scripts/platform.sh   OS and package detection shared by every script
-systemd/     user unit for the explorer API (Linux)
-launchd/     launch agent for the explorer API (macOS)
+systemd/       user unit for the explorer API (Linux)
+launchd/       launch agent for the explorer API (macOS)
+dist/          build output, not in git
 ```
 
-- `conf/nginx.conf` — main config copied from this machine.
+- `conf/nginx.conf` — main config template.
 - `conf/hosts.conf` — hostname-based virtual servers.
 - `conf/proxy-dev.conf` — shared proxy headers, including websockets.
 - `conf/maps.conf` — `$render_page`, which separates browser navigations from
   raw fetches. Included in the `http` block.
 - `conf/explorer.conf`, `conf/md.conf`, `conf/json.conf`, `conf/ipynb.conf`,
   `conf/text.conf`, `conf/inspect.conf` — feature snippets included in the
-  default server.
-- `html/md-render.js` — Markdown renderer shared by the Markdown and notebook
-  viewers, served at `/__md/render.js`.
+  default server. Every viewer snippet rewrites a navigation to
+  `/__app/index.html`; the app picks the viewer from the URL.
+
+Installed layout:
+
+```
+<config dir>/
+  nginx.conf                  rendered; includes dev-setup/conf/*.conf
+  nginx.conf.pre-dev-setup    one-time backup of the original
+  dev-setup/
+    manifest.json             source checkout, git SHA, platform, file hashes
+    conf/                     rendered confs and a copy of the hosts file
+    app/                      index.html, app.js, app.css, source maps
+```
+
+Nothing in the config dir links back to the checkout.
 
 On Linux nginx runs as `user root`, so a webroot symlinked to a build directory
 under `$HOME` serves without chmod. With Homebrew on macOS nginx runs as the
@@ -36,9 +53,14 @@ login user on port 8080, which reads the same files without root.
 ## Install
 
 ```bash
-./install.sh            # detect the platform, render, validate, reload
-./install.sh --show     # print the detected layout and exit
+./install.sh              # build, render, copy, validate, reload
+./install.sh --show       # print the detected layout and the installed manifest
+./install.sh --uninstall  # remove dev-setup/, restore the backup, stop the explorer
 ```
+
+The installer needs `node` 22.18 or newer, because `build.mts` runs as
+TypeScript through node's type stripping. If `node` is missing or older, the
+installer stops and prints the install command.
 
 The script:
 
@@ -46,10 +68,11 @@ The script:
   `nginx -V`
 - backs up the existing main config once as `nginx.conf.pre-dev-setup` in the
   config dir
-- renders every `conf/*.conf` into the config dir under its base name, with the
-  paths and port filled in, and symlinks the `html/` pages beside them
-- removes files it installed earlier and no longer owns, such as a renamed
-  snippet
+- runs `npm install` and `npm run build` when `dist/` is missing or older than
+  `src/`
+- deletes `dev-setup/` and writes it again: the rendered confs, a copy of the
+  hosts file, the built app, and `manifest.json`
+- removes the files and symlinks of the previous flat layout, one time
 - runs `nginx -t`
 - enables and starts nginx, or reloads it when already running
 - installs the explorer API as a user service (systemd) or launch agent (launchd)
@@ -110,10 +133,10 @@ HOSTS_CONF=~/my-hosts.conf ./install.sh   # same, through the environment
 Without an override, `conf/hosts.local.conf` wins when it exists, else
 `conf/hosts.conf`. Keep `hosts.local.conf` out of git for a personal file.
 
-`nginx.service` usually runs with `PrivateTmp=true`, which gives it a private
-`/tmp`. A link into `/tmp` passes `nginx -t`, which runs outside that sandbox,
-and then fails the reload. The installer copies such a file instead of linking
-it, and reports a failed reload with the log rather than leaving you guessing.
+The installer copies the hosts file into `dev-setup/conf/hosts.conf`. After an
+edit to your hosts file, run `./install.sh` again. Inside a hosts file, include
+the proxy headers as `include dev-setup/conf/proxy-dev.conf;`. nginx resolves
+a relative include against the config dir.
 
 Entry points after install:
 
@@ -139,18 +162,6 @@ launchctl print gui/$(id -u)/com.dev-setup.nginx-explorer   # macOS
 ```
 
 On macOS the agent logs to `~/Library/Logs/nginx-explorer.log`.
-
-## Keeping the copies in step
-
-`dev-setup/nginx` carries the same tree, so a teammate gets the same setup. The
-files are identical on purpose:
-
-```bash
-diff -r "$MR_WS/nginx" "$DEV_WS/dev-setup/nginx"    # expect no output
-```
-
-Nothing in `conf/`, `html/`, or `scripts/` names a repo, so a change syncs with a
-copy in either direction.
 
 ## Reaching the site on another port
 
@@ -184,7 +195,7 @@ page carries a host name.
 #
 #     location / {
 #         proxy_pass http://127.0.0.1:8000;
-#         include proxy-dev.conf;
+#         include dev-setup/conf/proxy-dev.conf;
 #     }
 # }
 ```
@@ -200,8 +211,9 @@ header. Everything else — `fetch()`, `curl`, `wget`, the Inspect viewer readin
 
 ## Markdown
 
-`conf/md.conf` rewrites a navigation to `*.md` to `html/md-viewer.html`, which
-fetches the same path with `?raw=1` and renders it:
+`conf/md.conf` rewrites a navigation to `*.md` to the app shell. The Markdown
+viewer (`src/viewers/MdViewer.tsx`) fetches the same path with `?raw=1` and
+renders it:
 
 ```
 http://localhost/scratch/gym/auctioneer-capacity-planning/README.md
@@ -213,16 +225,17 @@ tables with alignment, fenced code with a language label and a copy button,
 It builds a contents sidebar, follows the OS light/dark preference, and keeps a
 manual theme toggle in `localStorage`.
 
-- The renderer is one self-contained file. It needs no network and no
-  third-party code, so it works on a disconnected host.
+- The renderer is one pure function in `src/markdown/render.ts`. It needs no
+  network and no third-party code, so it works on a disconnected host.
 - Unsupported by design: footnotes, LaTeX, and Mermaid. They render as literal
   text.
-- `markdown-demo.md` exercises every construct. Open it to check an install.
+- `test/fixtures/markdown-demo.md` exercises every construct. `npm test`
+  checks it by assertion; open it through nginx to check an install by eye.
 
 ## JSON
 
-`conf/json.conf` renders `.json`, `.jsonl`, and `.ndjson` with
-`html/json-viewer.html`:
+`conf/json.conf` renders `.json`, `.jsonl`, and `.ndjson` with the JSON viewer
+(`src/viewers/JsonViewer.tsx`):
 
 - collapsible tree, colored by type, with `{ n items }` previews on closed nodes
 - nodes past depth 2 and nodes over 100 children start collapsed, so large
@@ -248,11 +261,12 @@ old `/__files` and `/__search` paths redirect to `/`.
 The routing is one `index` directive:
 
 ```nginx
-index index.html /__explorer.html;
+index index.html /__app/index.html;
 ```
 
 A directory serves its own `index.html` when it has one, which the Inspect
-embedded viewer needs. Otherwise nginx falls back to the explorer page, so the
+embedded viewer needs. Otherwise nginx falls back to the app shell, which
+renders the explorer for a path that ends in a slash. The
 URL stays `/example/` and the page reads its path from
 `location.pathname`. nginx cannot template its own autoindex output, which is
 why the explorer replaces the listing rather than restyling it.
@@ -355,14 +369,14 @@ listing, then one per level.
 - Listings are cached for 10 seconds, so Back, Forward, and revisits paint with
   no request. `r` clears the cache and refetches.
 - Hovering a directory row or a tree row prefetches that listing after 120 ms.
-- Rows paint in chunks: the first 200 immediately, then 400 per frame. A
-  directory of 5,001 entries shows its first screen in about 4 ms and finishes in
-  about 60 ms.
-- The filter debounces at 60 ms, and keyboard movement reuses cached row handles
-  instead of re-querying the DOM.
-- The viewer pages are served `Cache-Control: no-cache`, so a repeat load
-  revalidates to a 304 instead of downloading the page again. File bytes stay
-  `no-store`, so an edited file always reads fresh.
+- Rows paint in chunks (`useChunked`): the first 200 immediately, then 400 per
+  frame. The pre-React page showed the first screen of 5,001 entries in about
+  4 ms and finished in about 60 ms. These numbers are not measured again for
+  the React version yet.
+- The filter debounces at 60 ms.
+- The app files under `/__app/` are served `Cache-Control: no-cache`, so a
+  repeat load revalidates to a 304 instead of downloading the files again. File
+  bytes stay `no-store`, so an edited file always reads fresh.
 
 Measured on this webroot: the API answers a listing in 1–4 ms, and 5,001 entries
 with the tree in 46 ms.
@@ -402,7 +416,7 @@ The viewer is read only. Run cells and edit in Jupyter or VS Code.
 ## Large files
 
 `conf/text.conf` renders `.log`, `.txt`, `.out`, `.err`, `.csv`, and `.tsv` with
-`html/text-viewer.html`, which reads the file in 256 KiB HTTP range requests
+the text viewer (`src/viewers/TextViewer.tsx`), which reads the file in 256 KiB HTTP range requests
 instead of downloading it. nginx answers ranges natively, so file size stops
 mattering:
 
@@ -467,44 +481,55 @@ proxied request.
 `./scripts/inspect.sh bundle <log-dir> <out>` writes a standalone copy of the
 viewer and the logs, for sharing a directory that outlives the source logs.
 
-## Checking a change to a viewer
-
-The Markdown renderer runs in node. Extract it and render a sample:
+## Development
 
 ```bash
-node - <<'EOF'
-const fs = require("fs");
-const src = fs.readFileSync("html/md-viewer.html", "utf8");
-const start = src.indexOf("/* ============================ markdown renderer");
-const end = src.indexOf("/* ================================= page");
-fs.writeFileSync("/tmp/mdrender.mjs", src.slice(start, end) + "\nexport { renderMarkdown };");
-EOF
-node -e 'import("/tmp/mdrender.mjs").then(m => console.log(m.renderMarkdown("# hi\n\n- a\n- b\n").html))'
+npm install          # once; if the internal mirror token is stale, add --registry https://registry.npmjs.org/
+npm run lint         # ESLint: typescript-eslint, React hooks rules, braces on every if
+npm test             # tsc --noEmit, then lint, then node --test
+npm run build        # release build to dist/app (minified, with source maps)
+npm run dev          # rebuild on save, served by a throwaway nginx on port 8089
 ```
 
-To test a config change without touching the running server, render into a temp
-directory and run a second nginx on a high port:
+`npm run dev` runs `scripts/dev.sh`. The script installs into a temp config
+dir with `--no-services`, starts a second nginx on that dir, and runs the
+esbuild watcher with its output in the temp `dev-setup/app/`. A save is live
+on the next browser reload. The installed server on port 80 does not change.
+Ctrl-C stops the watcher and the second nginx, and deletes the temp dir.
+To browse content, symlink a directory into the temp `www/` that the script
+prints. Use `./scripts/dev.sh --port <n>` for another port.
+
+The renderers in `src/markdown/render.ts` and `src/notebook/render.ts` are
+pure functions, so `test/` checks them in node with no DOM.
+
+To upgrade an install:
 
 ```bash
-T=$(mktemp -d); mkdir -p $T/etc $T/www $T/log; cp "$(nginx -V 2>&1 | tr ' ' '\n' | sed -n 's|--conf-path=||p' | xargs dirname)/mime.types" $T/etc/
-NGINX_DIR=$T/etc NGINX_ROOT=$T/www NGINX_LOG_DIR=$T/log NGINX_PID=$T/nginx.pid \
-  ./install.sh --port 8089 --no-services
-nginx -c $T/etc/nginx.conf -p $T
+git pull && ./install.sh
 ```
+
+A change reaches port 80 only through `./install.sh`, because the installer
+copies the build and does not link it.
 
 ## Revert
 
-Restore the config saved by the installer:
+```bash
+./install.sh --uninstall
+```
+
+The command removes `dev-setup/`, restores `nginx.conf.pre-dev-setup`, reloads
+nginx, and stops the explorer service. To do the same by hand:
 
 ```bash
 # Linux
-sudo rm -f /etc/nginx/nginx.conf
+sudo rm -rf /etc/nginx/dev-setup /etc/nginx/nginx.conf
 sudo mv /etc/nginx/nginx.conf.pre-dev-setup /etc/nginx/nginx.conf
 sudo nginx -t && sudo systemctl reload nginx
+systemctl --user disable --now nginx-explorer
 
 # macOS, Homebrew
 D=$(brew --prefix)/etc/nginx
-rm -f $D/nginx.conf && mv $D/nginx.conf.pre-dev-setup $D/nginx.conf
+rm -rf $D/dev-setup $D/nginx.conf && mv $D/nginx.conf.pre-dev-setup $D/nginx.conf
 nginx -t && brew services restart nginx
 launchctl bootout gui/$(id -u)/com.dev-setup.nginx-explorer
 ```

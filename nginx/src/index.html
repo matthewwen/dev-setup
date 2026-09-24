@@ -1,0 +1,22 @@
+<!doctype html>
+<!--
+  App shell. install.sh copies this build's output to <config dir>/dev-setup/app/.
+  Every viewer conf rewrites here; the app picks the viewer from the URL.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dev-setup</title>
+<script>
+  // Set the theme before first paint so the page never flashes the wrong one.
+  document.documentElement.dataset.theme = localStorage.getItem("md-theme") ||
+    (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+</script>
+<link rel="stylesheet" href="/__app/app.css">
+</head>
+<body>
+<div id="root"></div>
+<script src="/__app/app.js"></script>
+</body>
+</html>

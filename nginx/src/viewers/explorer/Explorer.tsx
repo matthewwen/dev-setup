@@ -339,6 +339,9 @@ export function Explorer() {
             Preview
           </button>
           <ThemeButton />
+          <a className="btn" href="/prompts/" title="Saved prompts and model runs">
+            Prompts
+          </a>
           <a className="btn" href={`/__raw${path === "/" ? "/" : `${path}/`}`} title="Plain nginx index and raw bytes">
             Raw
           </a>

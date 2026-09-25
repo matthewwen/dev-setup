@@ -1,0 +1,151 @@
+/* Layout for the prompt library and task page. The page has its own header
+ * (title, status line, action buttons) instead of the shared Toolbar, so it
+ * does not use header.toolbar. Every rule is scoped under .prompts, as
+ * Explorer.css scopes under .explorer. */
+
+.prompts { max-width: 980px; margin: 0 auto; padding: 0 20px 40px; }
+
+.prompts .phead {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  padding: 14px 0;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: saturate(180%) blur(8px);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+.prompts .phead h1 { flex: 1 1 auto; margin: 0; font-size: 15px; font-weight: 600; }
+.prompts .pactions { display: flex; gap: 6px; flex: 0 0 auto; }
+.prompts .pstatus { font-size: 12px; color: var(--fg-muted); font-family: var(--mono); }
+.prompts .pstatus.error { color: var(--del); }
+.prompts .perror { margin: 0 0 12px; }
+
+/* ---------------------------- library ---------------------------- */
+.prompts .pbody { display: flex; gap: 24px; align-items: flex-start; }
+.prompts .psidebar { flex: 0 0 200px; display: flex; flex-direction: column; gap: 18px; }
+.prompts .psidebar .find { width: 100%; flex: none; }
+.prompts .pfacet h2 {
+  margin: 0 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--fg-muted);
+}
+.prompts .pchip {
+  display: block; width: 100%; text-align: left;
+  padding: 4px 8px; margin-bottom: 4px;
+  font-size: 12px; font-family: var(--sans);
+  color: var(--fg); background: var(--bg-soft);
+  border: 1px solid var(--border); border-radius: 6px; cursor: pointer;
+}
+.prompts .pchip.on { color: #fff; background: var(--link); border-color: var(--link); }
+.prompts .pchip .muted { float: right; }
+.prompts .pchip.on .muted { color: rgba(255, 255, 255, .8); }
+.prompts .pradio {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--fg-muted); margin-bottom: 4px; cursor: pointer;
+}
+.prompts .pstars { display: inline-flex; gap: 1px; }
+.prompts .pstar {
+  border: 0; background: none; cursor: pointer;
+  font-size: 15px; color: var(--border); padding: 0 1px; line-height: 1;
+}
+.prompts .pstar.on { color: var(--mark); }
+
+.prompts .plist { flex: 1 1 auto; min-width: 0; }
+.prompts .plist-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 10px; font-size: 12px;
+}
+.prompts select {
+  appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  padding: 5px 26px 5px 10px;
+  font-family: var(--sans); font-size: 12px;
+  color: var(--fg); background: var(--bg-soft);
+  border: 1px solid var(--border); border-radius: 7px;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%238b949e' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  background-size: 10px 7px;
+}
+.prompts select:hover { background-color: var(--bg-inset); }
+.prompts select:focus { outline: 2px solid var(--link); outline-offset: -1px; }
+.prompts .ptasks { display: flex; flex-direction: column; gap: 8px; }
+.prompts .trow {
+  padding: 10px 14px; cursor: pointer;
+  background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px;
+}
+.prompts .trow:hover { background: var(--bg-inset); }
+.prompts .trow-top, .prompts .trow-bottom {
+  display: flex; justify-content: space-between; gap: 12px; font-size: 13px;
+}
+.prompts .trow-top { font-weight: 600; margin-bottom: 3px; }
+.prompts .trow-bottom { font-size: 12px; color: var(--fg-muted); }
+.prompts .tstats { font-weight: 400; white-space: nowrap; }
+.prompts .tbest { font-size: 11px; margin-top: 4px; }
+
+/* ---------------------------- models panel ---------------------------- */
+.prompts .pmodels-scope { margin-bottom: 12px; font-size: 12px; }
+.prompts .mtable { width: 100%; border-collapse: collapse; font-size: 13px; }
+.prompts .mtable th, .prompts .mtable td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--border); }
+.prompts .mtable th { font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: var(--fg-muted); }
+.prompts .mbar-cell { width: 140px; }
+.prompts .mbar { height: 8px; background: var(--link); border-radius: 4px; }
+
+/* ---------------------------- task page ---------------------------- */
+.prompts.pdetail { padding-top: 0; }
+.prompts .pdetail-body { display: flex; flex-direction: column; gap: 14px; }
+.prompts .pfield { display: flex; flex-direction: column; gap: 4px; }
+.prompts .plabel { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--fg-muted); }
+.prompts .pfield input, .prompts .pfield textarea {
+  padding: 8px 10px; font-family: var(--mono); font-size: 13px;
+  color: var(--fg); background: var(--bg-soft);
+  border: 1px solid var(--border); border-radius: 8px; resize: vertical;
+}
+.prompts .pfield input:focus, .prompts .pfield textarea:focus {
+  outline: 2px solid var(--link); outline-offset: -1px;
+}
+.prompts .pgrow { overflow: hidden; }
+.prompts .pmeta { margin: -6px 0 0; font-size: 12px; }
+.prompts .preflist { margin: -6px 0 0; padding: 0; list-style: none; font-size: 13px; }
+.prompts .preflist li {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 4px 0;
+}
+.prompts .pref-actions { display: flex; gap: 4px; flex: 0 0 auto; }
+.prompts .pref-actions .btn { padding: 2px 6px; }
+.prompts .pref-editing input, .prompts .pref-add input {
+  flex: 1 1 auto; padding: 5px 9px;
+  font-family: var(--mono); font-size: 12px;
+  color: var(--fg); background: var(--bg-soft);
+  border: 1px solid var(--border); border-radius: 7px;
+}
+.prompts .pref-add { margin-top: 2px; }
+
+.prompts .pruns { margin-top: 6px; }
+.prompts .pruns-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.prompts .pruns-head h2 { margin: 0; font-size: 13px; font-weight: 600; }
+.prompts .rtable { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 10px; }
+.prompts .rtable th, .prompts .rtable td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+.prompts .rtable th { font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: var(--fg-muted); }
+.prompts .rnotes { max-width: 280px; }
+.prompts .ractions { white-space: nowrap; }
+.prompts .ractions .btn { padding: 2px 6px; }
+
+.prompts .rform {
+  padding: 12px; margin-top: 4px;
+  background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px;
+}
+.prompts .rform-row { display: flex; gap: 16px; margin-bottom: 8px; flex-wrap: wrap; }
+.prompts .rform-row label, .prompts .rform-notes {
+  display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--fg-muted);
+}
+.prompts .rform-notes { display: flex; flex-direction: column; align-items: stretch; gap: 4px; margin-bottom: 8px; }
+.prompts .rform-notes textarea {
+  font-family: var(--mono); font-size: 12px; padding: 6px 8px;
+  color: var(--fg); background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+}
+.prompts .rform input[type="text"], .prompts .rform input:not([type]) {
+  padding: 4px 7px; font-family: var(--mono); font-size: 12px;
+  color: var(--fg); background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+}
+.prompts .rform-narrow { width: 48px; }
+.prompts .rform-actions { display: flex; gap: 6px; justify-content: flex-end; }

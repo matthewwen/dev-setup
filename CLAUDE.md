@@ -34,3 +34,4 @@ Three env vars must be set before sourcing (in `.zshrc` or `~/.devsetuprc`):
 - `sync_command` excludes `.git`, `node_modules`, `build`, `target`, `.venv`, `__pycache__`, and similar build artifacts via rsync `--exclude`.
 - Tmux plugins are managed via TPM (`~/.tmux/plugins/tpm`). Plugin install: `prefix + I` inside tmux.
 - The `CUSTOM_WORK` env var, if set, prevents `common.sh` from defining the default `work`/`parse_work_args` functions — allowing work scripts to override them.
+- Do not add docstrings or comments to code unless explicitly asked. Write code without explanatory comments by default.

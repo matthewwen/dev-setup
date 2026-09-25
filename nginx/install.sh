@@ -167,10 +167,14 @@ HOSTS_CONF="$(cd "$(dirname "$HOSTS_CONF")" && pwd -P)/$(basename "$HOSTS_CONF")
 RENDERED=(
   conf/proxy-dev.conf conf/maps.conf
   conf/md.conf conf/json.conf conf/ipynb.conf conf/text.conf
-  conf/inspect.conf conf/explorer.conf
+  conf/inspect.conf conf/explorer.conf conf/prompts.conf
 )
 EXPLORER_CONFIG_DIR="${XDG_CONFIG_HOME:-${HOME}/.config}/nginx-explorer"
 EXPLORER_TOKEN_FILE="${EXPLORER_CONFIG_DIR}/edit-token"
+# Same XDG default prompts.py's default_db_path() computes, made explicit
+# here so the service and a manual `explorer.sh run` always agree on one
+# database rather than each deriving it independently.
+PROMPTS_DB="${XDG_DATA_HOME:-${HOME}/.local/share}/nginx-explorer/prompts.db"
 HTML_LINK="${HOME}/html"
 OLD_RENDER_MARK="# dev-setup:rendered"
 
@@ -378,6 +382,7 @@ elif [[ "$NGINX_OS" == linux ]] && command -v systemctl >/dev/null 2>&1; then
   # Substitute the absolute repo path so the unit survives being started by
   # systemd with an unrelated working directory.
   sed -e "s|@BASE_DIR@|${BASE_DIR}|g" -e "s|@WEBROOT@|${WEBROOT}|g" \
+      -e "s|@PROMPTS_DB@|${PROMPTS_DB}|g" \
     "${BASE_DIR}/systemd/${EXPLORER_UNIT}" > "$unit_file"
   systemctl --user daemon-reload
   systemctl --user enable "$EXPLORER_UNIT"
@@ -397,6 +402,7 @@ elif [[ "$NGINX_OS" == macos ]]; then
       -e "s|@WEBROOT@|${WEBROOT}|g" \
       -e "s|@PATH@|${LAUNCH_PATH}|g" \
       -e "s|@TOKEN_FILE@|${EXPLORER_TOKEN_FILE}|g" \
+      -e "s|@PROMPTS_DB@|${PROMPTS_DB}|g" \
       -e "s|@LOG@|${LAUNCH_LOG}|g" \
       "${BASE_DIR}/launchd/nginx-explorer.plist" > "$plist"
   launchctl bootout "gui/$(id -u)/${LAUNCH_LABEL}" >/dev/null 2>&1 || true

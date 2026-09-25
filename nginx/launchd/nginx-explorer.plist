@@ -19,6 +19,8 @@
     <string>@WEBROOT@</string>
     <key>EXPLORER_EDIT_TOKEN_FILE</key>
     <string>@TOKEN_FILE@</string>
+    <key>PROMPTS_DB</key>
+    <string>@PROMPTS_DB@</string>
   </dict>
   <key>RunAtLoad</key>
   <true/>

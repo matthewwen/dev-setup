@@ -6,6 +6,7 @@ After=network.target
 Type=simple
 Environment=NGINX_ROOT=@WEBROOT@
 Environment=EXPLORER_EDIT_TOKEN_FILE=%h/.config/nginx-explorer/edit-token
+Environment=PROMPTS_DB=@PROMPTS_DB@
 ExecStart=@BASE_DIR@/scripts/explorer.sh run
 Restart=on-failure
 RestartSec=2

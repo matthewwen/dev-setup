@@ -1,7 +1,7 @@
 // Which viewer a URL maps to. Mirrors the extension matches in conf/*.conf;
 // nginx has already decided a navigation should render before this runs, so
 // this only picks which component, never whether to render at all.
-export type ViewerKind = "explorer" | "md" | "json" | "ipynb" | "text" | "eval";
+export type ViewerKind = "explorer" | "md" | "json" | "ipynb" | "text" | "eval" | "prompts";
 
 const EXTENSION_VIEWERS: Record<string, ViewerKind> = {
   md: "md",
@@ -32,6 +32,9 @@ const EXTENSION_VIEWERS: Record<string, ViewerKind> = {
 };
 
 export function pickViewer(pathname: string, search: string): ViewerKind {
+  if (pathname === "/prompts" || pathname.startsWith("/prompts/")) {
+    return "prompts";
+  }
   if (pathname.endsWith("/")) {
     return "explorer";
   }

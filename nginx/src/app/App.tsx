@@ -6,6 +6,7 @@ import { JsonViewer } from "../viewers/JsonViewer";
 import { MdViewer } from "../viewers/MdViewer";
 import { IpynbViewer } from "../viewers/IpynbViewer";
 import { Explorer } from "../viewers/explorer/Explorer";
+import { Prompts } from "../prompts/Prompts";
 
 // Reads the URL once per navigation and picks a viewer. The explorer then
 // navigates itself (pushState) without a further read of this URL; every
@@ -33,6 +34,11 @@ export function App() {
   }
   if (viewer === "explorer") {
     return <Explorer />;
+  }
+  if (viewer === "prompts") {
+    // Prompts navigates itself with pushState, like the explorer, so it is
+    // not keyed by path.
+    return <Prompts />;
   }
 
   return (

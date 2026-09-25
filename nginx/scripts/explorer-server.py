@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """Browse and search API for the nginx file server.
 
-Serves /api/list, /api/search, /api/review, and /api/health on 127.0.0.1.
-nginx proxies /__api/ to it, and explorer.html is the browser client. Every
-request stays inside the webroot, following its top-level symlinks. Content
-search uses ripgrep when it is installed. Review comments live in the store
-that review_store.py describes.
+Serves /api/list, /api/search, /api/review, /api/prompts, and /api/health on
+127.0.0.1. nginx proxies /__api/ to it, and explorer.html is the browser
+client. Every request stays inside the webroot, following its top-level
+symlinks. Content search uses ripgrep when it is installed. Review comments
+live in the store that review_store.py describes; the prompt library lives in
+the SQLite database that prompts.py describes. Unlike /api/files, the prompt
+endpoints carry no token: see the design doc's auth decision.
 """
 
 import argparse
+import dataclasses
 import getpass
 import hmac
 import json
@@ -22,6 +25,7 @@ import time
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+import prompts
 import review_store
 
 DEFAULT_ROOT = os.environ.get("NGINX_ROOT", "/usr/share/nginx/html")
@@ -41,6 +45,8 @@ CONTENT_SKIP_GLOBS = ["!*.eval", "!*.zip", "!*.safetensors", "!build/private"]
 ROOT = DEFAULT_ROOT
 HAVE_RG = shutil.which("rg") is not None
 EDIT_TOKEN = ""
+PROMPTS_DB = None
+PROMPT_OPS = ("task.create", "task.update", "task.delete", "run.create", "run.update", "run.delete")
 
 
 def allowed_roots():
@@ -309,6 +315,18 @@ def tree_levels(rel_scope):
     return levels
 
 
+def _require(payload, key):
+    """A required POST field, or ValueError -> 400 rather than a KeyError -> 404.
+
+    404 is reserved for an id or op that names something that does not exist;
+    a missing field in the request body is a 400.
+    """
+    value = payload.get(key)
+    if value is None or value == "":
+        raise ValueError("%s is required" % key)
+    return value
+
+
 def merge(name_hits, content_hits):
     """Fold content matches into name matches so each file appears once."""
     by_path = {r["path"]: r for r in name_hits}
@@ -405,10 +423,153 @@ class Handler(BaseHTTPRequestHandler):
         payload["ok"] = True
         self.send_json(200, payload)
 
+    # ------------------------------------------------------------------
+    # Prompt library. No has_edit_access() check anywhere below: see the
+    # design doc's auth decision. Do not add one without also updating that
+    # doc, and do not let this block reuse resolve_file or allowed_roots —
+    # it never touches the filesystem, only prompts.py's own database.
+    # ------------------------------------------------------------------
+
+    def get_prompt_tasks(self, get):
+        conn = prompts.connect(PROMPTS_DB)
+        try:
+            min_rating_raw = get("rating")
+            min_rating = int(min_rating_raw) if min_rating_raw else None
+            limit = int(get("limit") or 200)
+            offset = int(get("offset") or 0)
+            tasks = prompts.list_tasks(
+                conn, q=get("q"), tag=get("tag"), model=get("model"), min_rating=min_rating,
+                sort=get("sort") or "updated", limit=limit, offset=offset,
+            )
+            total = prompts.count_tasks(conn, q=get("q"), tag=get("tag"), model=get("model"), min_rating=min_rating)
+        except ValueError as err:
+            self.send_json(400, {"ok": False, "error": str(err)})
+            return
+        finally:
+            conn.close()
+        self.send_json(200, {
+            "ok": True,
+            "tasks": [dataclasses.asdict(t) for t in tasks],
+            "total": total,
+            "truncated": len(tasks) == limit and total > limit,
+        })
+
+    def get_prompt_task(self, get):
+        try:
+            task_id = int(get("id") or 0)
+        except ValueError as err:
+            self.send_json(400, {"ok": False, "error": str(err)})
+            return
+        conn = prompts.connect(PROMPTS_DB)
+        try:
+            task = prompts.get_task(conn, task_id)
+        finally:
+            conn.close()
+        if task is None:
+            self.send_json(404, {"ok": False, "error": "no task %d" % task_id})
+            return
+        self.send_json(200, {"ok": True, "task": dataclasses.asdict(task)})
+
+    def get_prompt_facets(self, get):
+        conn = prompts.connect(PROMPTS_DB)
+        try:
+            f = prompts.facets(conn, tag=get("tag"))
+        finally:
+            conn.close()
+        self.send_json(200, {
+            "ok": True, "tags": f.tags,
+            "models": [dataclasses.asdict(m) for m in f.models],
+            "task_count": f.task_count,
+        })
+
+    def run_prompt_op(self, conn, operation, payload):
+        """Dispatch one POST /api/prompts op. Returns (result dict, status code)."""
+        if operation == "task.create":
+            task = prompts.create_task(
+                conn,
+                title=payload.get("title") or "",
+                prompt=payload.get("prompt") or "",
+                notes=payload.get("notes") or "",
+                tags=payload.get("tags") or (),
+                refs=payload.get("refs") or (),
+            )
+            return {"task": dataclasses.asdict(task)}, 201
+
+        if operation == "task.update":
+            task_id = int(_require(payload, "id"))
+            fields = {k: payload[k] for k in ("title", "prompt", "notes", "tags", "refs") if k in payload}
+            task = prompts.update_task(conn, task_id, **fields)
+            return {"task": dataclasses.asdict(task)}, 200
+
+        if operation == "task.delete":
+            task_id = int(_require(payload, "id"))
+            prompts.delete_task(conn, task_id)
+            return {}, 200
+
+        if operation == "run.create":
+            task_id = int(_require(payload, "task_id"))
+            model = str(_require(payload, "model"))
+            run_obj = prompts.create_run(
+                conn, task_id, model,
+                harness=payload.get("harness") or "",
+                rating=payload.get("rating"),
+                turns=payload.get("turns"),
+                notes=payload.get("notes") or "",
+                ran_at=payload.get("ran_at"),
+            )
+            task = prompts.get_task(conn, task_id)
+            return {"run": dataclasses.asdict(run_obj), "task": dataclasses.asdict(task)}, 201
+
+        if operation == "run.update":
+            run_id = int(_require(payload, "id"))
+            fields = {k: payload[k] for k in ("model", "harness", "rating", "turns", "notes", "ran_at") if k in payload}
+            run_obj = prompts.update_run(conn, run_id, **fields)
+            result = {"run": dataclasses.asdict(run_obj)}
+            if payload.get("task_id") is not None:
+                result["task"] = dataclasses.asdict(prompts.get_task(conn, int(payload["task_id"])))
+            return result, 200
+
+        run_id = int(_require(payload, "id"))  # run.delete
+        prompts.delete_run(conn, run_id)
+        result = {}
+        if payload.get("task_id") is not None:
+            result["task"] = dataclasses.asdict(prompts.get_task(conn, int(payload["task_id"])))
+        return result, 200
+
+    def post_prompts(self):
+        try:
+            payload = self.read_json()
+        except ValueError as err:
+            self.send_json(400, {"ok": False, "error": str(err)})
+            return
+        if not isinstance(payload, dict):
+            self.send_json(400, {"ok": False, "error": "JSON body must be an object"})
+            return
+        operation = payload.get("op")
+        if operation not in PROMPT_OPS:
+            self.send_json(404, {"ok": False, "error": "unknown op: %r" % operation})
+            return
+
+        conn = prompts.connect(PROMPTS_DB)
+        try:
+            result, code = self.run_prompt_op(conn, operation, payload)
+        except ValueError as err:
+            self.send_json(400, {"ok": False, "error": str(err)})
+            return
+        except (KeyError, LookupError) as err:
+            self.send_json(404, {"ok": False, "error": str(err)})
+            return
+        finally:
+            conn.close()
+        self.send_json(code, {"ok": True, "op": operation, **result})
+
     def do_POST(self):
         parsed = urllib.parse.urlparse(self.path)
         if parsed.path in ("/api/review", "/review"):
             self.post_review()
+            return
+        if parsed.path in ("/api/prompts", "/prompts"):
+            self.post_prompts()
             return
         if parsed.path not in ("/api/files", "/files"):
             self.send_json(404, {"ok": False, "error": "unknown endpoint"})
@@ -445,11 +606,24 @@ class Handler(BaseHTTPRequestHandler):
 
         if parsed.path in ("/api/health", "/health"):
             self.send_json(200, {"ok": True, "root": ROOT, "ripgrep": HAVE_RG,
-                                 "edit_enabled": bool(EDIT_TOKEN)})
+                                 "edit_enabled": bool(EDIT_TOKEN),
+                                 "prompts": True, "prompts_db": PROMPTS_DB})
             return
 
         if parsed.path in ("/api/review", "/review"):
             self.get_review(get)
+            return
+
+        if parsed.path in ("/api/prompts/tasks", "/prompts/tasks"):
+            self.get_prompt_tasks(get)
+            return
+
+        if parsed.path in ("/api/prompts/task", "/prompts/task"):
+            self.get_prompt_task(get)
+            return
+
+        if parsed.path in ("/api/prompts/facets", "/prompts/facets"):
+            self.get_prompt_facets(get)
             return
 
         if parsed.path in ("/api/list", "/list"):
@@ -523,14 +697,18 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    global ROOT, EDIT_TOKEN
+    global ROOT, EDIT_TOKEN, PROMPTS_DB
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", default=DEFAULT_ROOT, help="webroot to search")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--edit-token-file", default=os.environ.get("EXPLORER_EDIT_TOKEN_FILE"),
                         help="file containing the token required for POST /api/files")
+    parser.add_argument("--prompts-db", default=os.environ.get("PROMPTS_DB"),
+                        help="sqlite database for the prompt library (default: XDG data dir)")
     opts = parser.parse_args()
+
+    PROMPTS_DB = opts.prompts_db or prompts.default_db_path()
 
     ROOT = os.path.abspath(opts.root)
     if not os.path.isdir(ROOT):

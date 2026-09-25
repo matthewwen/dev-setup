@@ -10,11 +10,12 @@ const outDir = mkdtempSync(join(tmpdir(), "nginx-viewers-build-"));
 
 test.after(() => rmSync(outDir, { recursive: true, force: true }));
 
-test("the build writes index.html, app.js, and app.css", () => {
+test("the build writes index.html, app.js, app.css, and favicon.svg", () => {
   execFileSync("node", ["build.mts", "--out", outDir], { cwd: BASE_DIR, stdio: "inherit" });
   const html = readFileSync(join(outDir, "index.html"), "utf8");
   const js = readFileSync(join(outDir, "app.js"), "utf8");
   readFileSync(join(outDir, "app.css"), "utf8");
+  readFileSync(join(outDir, "favicon.svg"), "utf8");
 
   // The shell references only its own assets, never a CDN.
   for (const match of html.matchAll(/\b(?:src|href)="([^"]+)"/g)) {

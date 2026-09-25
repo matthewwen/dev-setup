@@ -7,8 +7,9 @@
 //   node build.mts --out <dir>  write dist/app into <dir> instead (dev loop against a throwaway nginx)
 //
 // dist/app is the only output: one shell (index.html), one script (app.js),
-// one sheet (app.css). Every viewer conf rewrites to /__app/index.html; the
-// app picks the viewer from location.pathname and the query string.
+// one sheet (app.css), and the tab icon (favicon.svg). Every viewer conf
+// rewrites to /__app/index.html; the app picks the viewer from
+// location.pathname and the query string.
 import { build, context } from "esbuild";
 import { mkdirSync, copyFileSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -24,6 +25,7 @@ const appOut = outIdx !== -1 ? args[outIdx + 1] : join(BASE_DIR, "dist", "app");
 function copyShell() {
   mkdirSync(appOut, { recursive: true });
   copyFileSync(join(BASE_DIR, "src", "index.html"), join(appOut, "index.html"));
+  copyFileSync(join(BASE_DIR, "src", "favicon.svg"), join(appOut, "favicon.svg"));
 }
 
 const esbuildOptions = {

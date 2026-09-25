@@ -488,9 +488,18 @@ listing, then one per level.
   4 ms and finished in about 60 ms. These numbers are not measured again for
   the React version yet.
 - The filter debounces at 60 ms.
-- The app files under `/__app/` are served `Cache-Control: no-cache`, so a
-  repeat load revalidates to a 304 instead of downloading the files again. File
-  bytes stay `no-store`, so an edited file always reads fresh.
+- The shell, `app.js`, and `app.css` under `/__app/` are served
+  `Cache-Control: no-cache`, so a repeat load revalidates to a 304 instead of
+  downloading the files again. The chunks under `/__app/chunks/` are
+  `immutable` for one year, because each name carries a content hash and a
+  rebuild writes new names. File bytes stay `no-store`, so an edited file
+  always reads fresh.
+- nginx compresses JavaScript, CSS, JSON, Markdown, text, and SVG with gzip,
+  including the API responses. Over an SSH tunnel this cuts the Mermaid chunks
+  from about 2.6 MB to about 750 KB.
+- A **Both** search runs the name search and the content search as two
+  ripgrep processes at the same time, so it takes about as long as the slower
+  one.
 
 Measured on this webroot: the API answers a listing in 1–4 ms, and 5,001 entries
 with the tree in 46 ms.

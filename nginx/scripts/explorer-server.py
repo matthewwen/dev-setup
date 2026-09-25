@@ -23,6 +23,7 @@ import sys
 import tempfile
 import time
 import urllib.parse
+from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import prompts
@@ -667,11 +668,18 @@ class Handler(BaseHTTPRequestHandler):
 
         started = time.time()
         try:
-            results = []
-            if mode in ("names", "both"):
-                results += search_names(q, rel_scope, target, get("glob"), regex, icase)
-            if mode in ("content", "both"):
-                results = merge(results, search_content(q, rel_scope, target, get("glob"), regex, icase))
+            search_args = (q, rel_scope, target, get("glob"), regex, icase)
+            if mode == "names":
+                results = search_names(*search_args)
+            elif mode == "content":
+                results = search_content(*search_args)
+            else:
+                # Each search is one rg process, so the two run side by side.
+                # result() re-raises the error of a search, names first as before.
+                with ThreadPoolExecutor(max_workers=2) as pool:
+                    names = pool.submit(search_names, *search_args)
+                    content = pool.submit(search_content, *search_args)
+                    results = merge(names.result(), content.result())
         except subprocess.TimeoutExpired:
             self.send_json(504, {"ok": False, "error": "search timed out after %ds" % TIMEOUT_S})
             return

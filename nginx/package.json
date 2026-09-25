@@ -9,7 +9,8 @@
     "dev": "bash scripts/dev.sh",
     "check": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
-    "test": "npm run check && npm run lint && node --test test/*.test.ts"
+    "test": "npm run check && npm run lint && node --test test/*.test.ts && npm run test:py",
+    "test:py": "python3 -m unittest discover -s scripts -p 'test_*.py'"
   },
   "dependencies": {
     "react": "^18.3.1",

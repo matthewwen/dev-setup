@@ -1,18 +1,36 @@
-import { useEffect, useMemo, useRef } from "react";
-import { renderMarkdown, type Heading } from "./render";
+import { useEffect, useMemo, useRef, type RefObject } from "react";
+import { renderMarkdown, type Block, type Heading } from "./render";
 import "./Markdown.css";
 
 // Renders Markdown source to HTML and wires the copy buttons the renderer
 // embeds in every fenced code block. Those buttons are plain markup inside
 // dangerouslySetInnerHTML, not React elements, so a click listener on the
 // container - not a CopyButton per block - is what makes them work.
-export function Markdown({ src, onHeadings }: { src: string; onHeadings?: (headings: Heading[]) => void }) {
-  const { fm, html, headings } = useMemo(() => renderMarkdown(src), [src]);
+// `sourceLines` adds data-line attributes for the review overlay, which finds
+// the blocks through `bodyRef`.
+export function Markdown({
+  src,
+  onHeadings,
+  onBlocks,
+  sourceLines,
+  bodyRef,
+}: {
+  src: string;
+  onHeadings?: (headings: Heading[]) => void;
+  onBlocks?: (blocks: Block[]) => void;
+  sourceLines?: boolean;
+  bodyRef?: RefObject<HTMLDivElement>;
+}) {
+  const { fm, html, headings, blocks } = useMemo(() => renderMarkdown(src, undefined, { sourceLines }), [src, sourceLines]);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     onHeadings?.(headings);
   }, [headings, onHeadings]);
+
+  useEffect(() => {
+    onBlocks?.(blocks);
+  }, [blocks, onBlocks]);
 
   useEffect(() => {
     const el = ref.current;
@@ -41,7 +59,7 @@ export function Markdown({ src, onHeadings }: { src: string; onHeadings?: (headi
   return (
     <div className="markdown-body" ref={ref}>
       {fm && <div id="frontmatter">{fm}</div>}
-      <div id="body" dangerouslySetInnerHTML={{ __html: html }} />
+      <div id="body" ref={bodyRef} dangerouslySetInnerHTML={{ __html: html }} />
     </div>
   );
 }

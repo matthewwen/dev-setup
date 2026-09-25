@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """Browse and search API for the nginx file server.
 
-Serves /api/list, /api/search, and /api/health on 127.0.0.1. nginx proxies
-/__api/ to it, and explorer.html is the browser client. Every request stays
-inside the webroot, following its top-level symlinks. Content search uses
-ripgrep when it is installed.
+Serves /api/list, /api/search, /api/review, and /api/health on 127.0.0.1.
+nginx proxies /__api/ to it, and explorer.html is the browser client. Every
+request stays inside the webroot, following its top-level symlinks. Content
+search uses ripgrep when it is installed. Review comments live in the store
+that review_store.py describes.
 """
 
 import argparse
+import getpass
 import hmac
 import json
 import os
@@ -20,6 +22,8 @@ import time
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+import review_store
+
 DEFAULT_ROOT = os.environ.get("NGINX_ROOT", "/usr/share/nginx/html")
 DEFAULT_PORT = int(os.environ.get("EXPLORER_PORT", os.environ.get("SEARCH_PORT", "7576")))
 
@@ -28,6 +32,8 @@ MAX_PER_FILE = 20
 TIMEOUT_S = 25
 MAX_FILESIZE = "8M"
 MAX_WRITE_BYTES = 8 * 1024 * 1024
+MAX_REVIEW_BYTES = 64 * 1024
+REVIEW_AUTHOR = os.environ.get("MD_REVIEW_AUTHOR") or getpass.getuser()
 SKIP_GLOBS = ["!.git", "!node_modules", "!__pycache__"]
 # Archives and build output are noise in content search but valid file names.
 CONTENT_SKIP_GLOBS = ["!*.eval", "!*.zip", "!*.safetensors", "!build/private"]
@@ -348,8 +354,62 @@ class Handler(BaseHTTPRequestHandler):
         supplied = self.headers.get("X-Explorer-Token", "")
         return bool(EDIT_TOKEN) and hmac.compare_digest(supplied, EDIT_TOKEN)
 
+    def review_document(self, rel):
+        """(store key, lines) for a webroot-relative document path."""
+        target = resolve_file(rel, must_exist=True)
+        if not os.path.isfile(target):
+            raise ValueError("path is not a file")
+        return review_store.key_for(target, ROOT), review_store.read_document(target)
+
+    # POST /api/review needs no token and accepts any Origin. The handler
+    # writes only into the review store: the request names a document to
+    # comment on, never a target path to write. A missing author becomes the
+    # login name of the user that runs this server, as in mdreview.py.
+    def post_review(self):
+        content_type = self.headers.get("Content-Type", "").split(";")[0].strip().lower()
+        if content_type != "application/json":
+            self.send_json(415, {"ok": False, "error": "Content-Type must be application/json"})
+            return
+        try:
+            if int(self.headers.get("Content-Length", "0") or 0) > MAX_REVIEW_BYTES:
+                raise ValueError("request exceeds the %d KiB limit" % (MAX_REVIEW_BYTES // 1024))
+            payload = self.read_json()
+            if not isinstance(payload, dict):
+                raise ValueError("JSON body must be an object")
+            operation = payload.get("op")
+            if not str(payload.get("author") or "").strip():
+                payload["author"] = REVIEW_AUTHOR
+            key, lines = self.review_document(payload.get("path"))
+            comment_id = review_store.apply(key, operation, payload, lines)
+        except (ValueError, FileNotFoundError, OSError) as err:
+            self.send_json(400, {"ok": False, "error": str(err)})
+            return
+        code = 201 if operation == "comment" else 200
+        self.send_json(code, {"ok": True, "op": operation, "id": comment_id, "path": "/" + key})
+
+    def get_review(self, get):
+        status = get("status", "open")
+        if status not in ("open", "resolved", "all"):
+            status = "open"
+        try:
+            if get("path"):
+                key, lines = self.review_document(get("path"))
+                payload = review_store.document_report(key, lines, "all")
+            else:
+                rel_scope, scope_dir = resolve_scope(get("scope"))
+                prefix = review_store.key_for(scope_dir, ROOT) if rel_scope else ""
+                payload = review_store.scope_report(prefix, status)
+        except (ValueError, FileNotFoundError, OSError) as err:
+            self.send_json(400, {"ok": False, "error": str(err)})
+            return
+        payload["ok"] = True
+        self.send_json(200, payload)
+
     def do_POST(self):
         parsed = urllib.parse.urlparse(self.path)
+        if parsed.path in ("/api/review", "/review"):
+            self.post_review()
+            return
         if parsed.path not in ("/api/files", "/files"):
             self.send_json(404, {"ok": False, "error": "unknown endpoint"})
             return
@@ -386,6 +446,10 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path in ("/api/health", "/health"):
             self.send_json(200, {"ok": True, "root": ROOT, "ripgrep": HAVE_RG,
                                  "edit_enabled": bool(EDIT_TOKEN)})
+            return
+
+        if parsed.path in ("/api/review", "/review"):
+            self.get_review(get)
             return
 
         if parsed.path in ("/api/list", "/list"):

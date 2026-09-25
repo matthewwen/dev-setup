@@ -496,6 +496,67 @@ _nginxctl_completion() {
 }
 compdef _nginxctl_completion nginxctl
 
+# ==============================================================================
+# review comments on rendered Markdown: mdreview list | show | add | reply | ...
+# ==============================================================================
+_MDREVIEW_PY="${${(%):-%x}:A:h:h}/nginx/scripts/mdreview.py"
+mdreview() {
+    local py
+    for py in python3.12 python3.11 python3; do
+        if (( $+commands[$py] )); then
+            "$py" "$_MDREVIEW_PY" "$@"
+            return
+        fi
+    done
+    echo "mdreview: no python3 on PATH" >&2
+    return 1
+}
+
+_mdreview_ids() {
+    local -a ids
+    ids=(${(f)"$(mdreview list --status all --json 2>/dev/null | python3 -c '
+import json, sys
+for doc in json.load(sys.stdin).get("documents", []):
+    for c in doc["comments"]:
+        print("%s:%s %s" % (c["id"], doc["path"], " ".join(c["body"].split())[:50].replace(":", " ")))
+' 2>/dev/null)"})
+    _describe 'comment' ids
+}
+
+_mdreview_completion() {
+    local -a commands
+    commands=('list:list comments, open ones by default'
+              'show:show one comment'
+              'add:add a comment on a line range or the whole document'
+              'reply:reply to a comment'
+              'resolve:resolve as fixed, answered, or wontfix'
+              'reopen:reopen a resolved comment'
+              'rm:delete a comment'
+              'mv:move stored comments after a document moved')
+    if (( CURRENT == 2 )); then
+        _describe 'command' commands
+        return
+    fi
+    local cmd=$words[2]
+    shift words
+    (( CURRENT-- ))
+    local -a doc=('--path[document]:markdown file:_files -g "*.md(-.)"')
+    local -a author=('--author[author name]:name:')
+    case $cmd in
+        list)    _arguments $doc '--scope[directory]:directory:_files -/' \
+                     '--status[filter]:status:(open resolved all)' '--json[print JSON]' ;;
+        show)    _arguments '1:comment:_mdreview_ids' $doc '--json[print JSON]' ;;
+        add)     _arguments $doc '--line[first line]:line:' '--end-line[last line]:line:' \
+                     '--body[comment text]:text:' $author ;;
+        reply)   _arguments '1:comment:_mdreview_ids' '--body[reply text]:text:' $author $doc ;;
+        resolve) _arguments '1:comment:_mdreview_ids' '--action[outcome]:action:(fixed answered wontfix)' \
+                     '--body[reply text]:text:' $author $doc ;;
+        reopen|rm) _arguments '1:comment:_mdreview_ids' $author $doc ;;
+        mv)      _arguments '1:old path:_files -g "*.md(-.)"' '2:new path:_files -g "*.md(-.)"' ;;
+    esac
+}
+compdef _mdreview_completion mdreview
+
 _register_work_completion() {
     local script=$1
     local base=$(basename $script)

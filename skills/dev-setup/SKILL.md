@@ -118,6 +118,10 @@ the script's top-level `func()` definitions (skipping `_`-prefixed ones) so
 `work-myproject <TAB>` completes its subcommands. This is why any function you
 add to a work script is completable with no extra wiring.
 
+**Review comments:** `mdreview` runs `nginx/scripts/mdreview.py`. It lists,
+adds, replies to, and resolves comments on rendered Markdown. The `md-review`
+skill covers how an agent answers them.
+
 **Misc:** `alias vi=nvim`, `alias vim=nvim`.
 
 ## The CUSTOM_WORK override (important)

@@ -16,6 +16,7 @@ src/           the React app, one component per viewer (TypeScript)
 test/          node:test suites and fixtures
 conf/          nginx config templates; @...@ fields are filled at install time
 scripts/       helper commands (dev.sh, explorer.sh, explorer-server.py, inspect.sh, service.sh)
+scripts/review_store.py, mdreview.py   review comment store and its command line
 scripts/platform.sh   OS and package detection shared by every script
 systemd/       user unit for the explorer API (Linux)
 launchd/       launch agent for the explorer API (macOS)
@@ -232,6 +233,114 @@ manual theme toggle in `localStorage`.
 - `test/fixtures/markdown-demo.md` exercises every construct. `npm test`
   checks it by assertion; open it through nginx to check an install by eye.
 
+## Review comments
+
+A reviewer comments on a rendered Markdown page in the browser. An agent reads
+the comments with `mdreview`, edits the file, and replies. The page shows each
+reply the next time the reader returns to the tab.
+
+The comments stay outside the document and outside git. The document gets no
+markers.
+
+### Comment in the browser
+
+1. Open a `.md` file through nginx.
+2. Click **Comments** in the toolbar. The panel opens on the right, and the
+   button shows the open count.
+3. Start a comment in one of three ways:
+   - Select text inside one paragraph, list, table, or code block, then click
+     **Comment** under the selection.
+   - Move the pointer over a block, then click **+** in the left margin.
+   - Click **Add a note on the document** at the foot of the panel.
+4. Type the comment. Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> or
+   <kbd>Cmd</kbd>+<kbd>Enter</kbd> to post it. Press <kbd>Esc</kbd> to cancel.
+
+A block with an open comment gets a yellow tint and a bar in the margin. Click
+the header of a comment to scroll to its block. Each comment has **Reply**,
+**Resolve**, **Reopen**, and **Delete**. Resolved comments collect in a closed
+**Resolved** group.
+
+The author is the login name of the user that runs the explorer API. To use a
+different name, set `MD_REVIEW_AUTHOR` in the service environment.
+
+When the window gets focus again, the page fetches the document and the
+comments again. If the file changes while you type a comment, the server
+refuses the comment and the panel shows **Reload the document**.
+
+### Answer the comments
+
+`dev/common.sh` defines the `mdreview` command, with tab completion for the
+subcommands and the comment ids:
+
+```zsh
+mdreview list                                      # documents with open comments
+mdreview list --path ~/html/notes/plan.md          # open comments on one document
+mdreview list --path /notes/plan.md --json         # the same, for an agent
+mdreview add --path /notes/plan.md --line 12 --body "Cite the source."
+mdreview reply k3f9a2 --body "Added the link." --author agent
+mdreview resolve k3f9a2 --action fixed --author agent   # or answered, wontfix
+mdreview reopen k3f9a2
+mdreview rm k3f9a2
+mdreview mv /notes/plan.md /notes/plan-v2.md       # after you rename a document
+```
+
+`--path` takes a filesystem path or a webroot path. The webroot comes from
+`--root`, then `$NGINX_ROOT`, then `~/html`.
+
+`list --json` prints every comment with its current position in
+`resolved.line`, `resolved.endLine`, and `resolved.text`. An agent reads only
+this output. The store format is not a contract.
+
+The `md-review` skill in `skills/md-review/SKILL.md` gives an agent the
+procedure. Link it into Claude Code once, from the main checkout. A link into
+a worktree breaks when you remove the worktree.
+
+```bash
+ln -s "$(git rev-parse --show-toplevel)/skills/md-review" ~/.claude/skills/md-review
+```
+
+Then ask the agent to "address the comments on plan.md", or run `/md-review`.
+
+### Anchors
+
+A comment anchors to one top-level block: a paragraph, a heading, a whole
+list, a whole table, a whole blockquote, or a whole fenced code block. The
+selected text is kept as a quote inside that block. On every read, the server
+finds where the block is now:
+
+| Result | Meaning | Panel |
+| :-- | :-- | :-- |
+| `exact` | the lines still hold the commented text | in place |
+| `moved` | the same text is at other lines | in place, **moved** badge |
+| `quote` | the block changed, and the quote is still in the file | in place, **quote** badge |
+| `orphan` | the commented text is gone | **Orphaned** group, with the original quote |
+
+Whitespace does not count in the match. A change of indentation, tabs, or
+spaces keeps a comment `exact`. A reflow that changes the line count gives
+`quote`. The server never rewrites an anchor.
+
+### Storage
+
+Each document has one append-only JSONL file:
+
+```
+${XDG_STATE_HOME:-~/.local/state}/dev-setup/md-review/<webroot path>.jsonl
+```
+
+Each line is one event: `comment`, `reply`, `status`, or `delete`. The current
+state is the replay of the events in order. A delete hides a comment and keeps
+its events. Set `MD_REVIEW_DIR` to use a different directory.
+
+### Limits
+
+- The endpoint needs no token and accepts any origin. It writes only into the
+  store, and the request cannot name a target file.
+- A request is at most 64 KiB, a comment at most 8 KiB, and a document at most
+  8 MiB. A document keeps at most 2000 events.
+- A selection must stay inside one block. A comment on a list item anchors to
+  the whole list.
+- Only the Markdown viewer takes comments. Notebooks, JSON, and text do not.
+
 ## JSON
 
 `conf/json.conf` renders `.json`, `.jsonl`, and `.ndjson` with the JSON viewer
@@ -401,6 +510,9 @@ without it, browsing and name search still work.
 | `/__api/health` | — | `{ok, root, ripgrep}` |
 | `/__api/list` | `path`, `dirs=1` | one directory level, dirs then files |
 | `/__api/search` | `q`, `mode`, `scope`, `glob`, `regex`, `case` | matches grouped by file |
+| `GET /__api/review` | `path` | the comments on one document, with their current positions |
+| `GET /__api/review` | `scope`, `status` | per-document comment counts under a directory |
+| `POST /__api/review` | JSON `{op, path, ...}`; `op` is `comment`, `reply`, `status`, or `delete` | `{ok, op, id, path}` |
 
 ## Notebooks
 
@@ -488,7 +600,7 @@ viewer and the logs, for sharing a directory that outlives the source logs.
 ```bash
 npm install          # once; if the internal mirror token is stale, add --registry https://registry.npmjs.org/
 npm run lint         # ESLint: typescript-eslint, React hooks rules, braces on every if
-npm test             # tsc --noEmit, then lint, then node --test
+npm test             # tsc --noEmit, then lint, then node --test, then the Python tests
 npm run build        # release build to dist/app (minified, with source maps)
 npm run dev          # rebuild on save, served by a throwaway nginx on port 8089
 ```
@@ -511,7 +623,8 @@ git pull && ./install.sh
 ```
 
 A change reaches port 80 only through `./install.sh`, because the installer
-copies the build and does not link it.
+copies the build and does not link it. The explorer API runs its scripts from
+the checkout, so a change to `scripts/*.py` needs `nginxctl restart` instead.
 
 ## Revert
 

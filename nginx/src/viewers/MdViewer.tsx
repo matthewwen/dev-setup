@@ -1,10 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Toolbar } from "../shared/Toolbar";
 import { SizeGuard } from "../shared/SizeGuard";
 import { Markdown } from "../markdown/Markdown";
 import { tocEntries, shouldShowToc } from "../markdown/toc";
-import type { Heading } from "../markdown/render";
+import type { Block, Heading } from "../markdown/render";
 import { fetchRaw, textViewUrl } from "../shared/fetch";
+import type { ReviewComment } from "../shared/review-api";
+import { ReviewPanel, type Draft } from "../review/ReviewPanel";
+import { DocOverlay } from "../review/DocOverlay";
+import { useReview } from "../review/useReview";
+import { blockAt, markedBlocks } from "../review/model";
 import "./MdViewer.css";
 
 // Rendering a very large document blocks the page, so SizeGuard asks first
@@ -83,17 +88,97 @@ export function MdViewer({ path }: { path: string }) {
     });
   };
 
+  // ---------- review comments ----------
+  const loaded = raw !== null;
+  const review = useReview(path, loaded);
+  const { refresh } = review;
+  const [blocks, setBlocks] = useState<Block[]>([]);
+  const [reviewOpen, setReviewOpen] = useState(() => localStorage.getItem("md-comments") === "1");
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [activeComment, setActiveComment] = useState<string | null>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const hostRef = useRef<HTMLElement>(null);
+
+  const comments = useMemo(() => review.data?.comments ?? [], [review.data]);
+  const marks = useMemo(() => markedBlocks(comments, blocks), [comments, blocks]);
+  const openCount = review.data?.counts.open ?? 0;
+
+  const showReview = (open: boolean) => {
+    setReviewOpen(open);
+    localStorage.setItem("md-comments", open ? "1" : "0");
+  };
+
+  const reloadDocument = useCallback(() => {
+    fetchRaw(path)
+      .then(text => setRaw(prev => (prev === text ? prev : text)))
+      .catch(() => undefined);
+  }, [path]);
+
+  // An agent edits the file and answers in the store while the reader is in
+  // another window, so coming back refetches both.
+  useEffect(() => {
+    if (!loaded) {
+      return;
+    }
+    const onFocus = () => {
+      reloadDocument();
+      void refresh();
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [loaded, reloadDocument, refresh]);
+
+  const startDraft = (d: Draft) => {
+    setDraft(d);
+    setActiveComment(null);
+    showReview(true);
+  };
+
+  const endDraft = (reload: boolean) => {
+    setDraft(null);
+    if (reload) {
+      reloadDocument();
+      void refresh();
+    }
+  };
+
+  const pickComment = (c: ReviewComment) => {
+    setActiveComment(c.id);
+    const line = c.resolved.line;
+    const block = line === undefined ? undefined : blockAt(blocks, line);
+    const el = block && bodyRef.current?.querySelector(`[data-line="${block.line}"]`);
+    if (!(el instanceof HTMLElement)) {
+      return;
+    }
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
+    el.classList.remove("rv-flash");
+    void el.offsetWidth;
+    el.classList.add("rv-flash");
+    window.setTimeout(() => el.classList.remove("rv-flash"), 1500);
+  };
+
+  const showComment = (id: string) => {
+    setActiveComment(id);
+    showReview(true);
+    requestAnimationFrame(() => document.getElementById(`rv-${id}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
+  };
+
   return (
     <div className="md-viewer">
       <Toolbar
         path={path}
         actions={
-          <button className="btn" onClick={toggleToc} title="Toggle contents">
-            &#9776;
-          </button>
+          <>
+            <button className={`btn${reviewOpen ? " on" : ""}`} onClick={() => showReview(!reviewOpen)} title="Toggle comments">
+              Comments{openCount ? ` ${openCount}` : ""}
+            </button>
+            <button className="btn" onClick={toggleToc} title="Toggle contents">
+              &#9776;
+            </button>
+          </>
         }
       />
-      <main className={showToc ? "" : "no-toc"}>
+      <main className={`${showToc ? "" : "no-toc"}${reviewOpen ? " with-review" : ""}`}>
         {showToc && (
           <nav id="toc">
             <div>Contents</div>
@@ -104,7 +189,7 @@ export function MdViewer({ path }: { path: string }) {
             ))}
           </nav>
         )}
-        <article>
+        <article ref={hostRef} className="rv-host">
           {fetchError && (
             <div className="card error">
               Cannot load {path}
@@ -118,10 +203,31 @@ export function MdViewer({ path }: { path: string }) {
           {!fetchError && (
             <SizeGuard path={path} limitBytes={BIG_BYTES}>
               <MdLoader path={path} onLoaded={setRaw} onError={setFetchError} />
-              {raw === null ? "Loading…" : <Markdown src={raw} onHeadings={setHeadings} />}
+              {raw === null ? "Loading…" : <Markdown src={raw} onHeadings={setHeadings} onBlocks={setBlocks} sourceLines bodyRef={bodyRef} />}
             </SizeGuard>
           )}
+          {loaded && (
+            <DocOverlay
+              bodyRef={bodyRef}
+              hostRef={hostRef}
+              blocks={blocks}
+              marks={marks}
+              draftLine={draft?.line ?? null}
+              onComment={startDraft}
+              onShow={showComment}
+            />
+          )}
         </article>
+        {reviewOpen && (
+          <ReviewPanel
+            review={review}
+            draft={draft}
+            activeId={activeComment}
+            onDraftDone={endDraft}
+            onNote={() => startDraft({ line: null, endLine: 0, text: "" })}
+            onPick={pickComment}
+          />
+        )}
       </main>
     </div>
   );

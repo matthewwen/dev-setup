@@ -58,6 +58,8 @@ This nginx setup gives local agent work a browsable, searchable webroot:
   AI eval logs
 - authenticated file create, edit, directory creation, and deletion through
   `/__api/files`
+- comments on rendered Markdown, which an agent reads and answers with
+  `mdreview` (see [nginx/README.md](nginx/README.md#review-comments))
 - a persistent Explorer API managed by `nginx-explorer.service`
 
 Turn both services off when the machine is busy, and back on later:
@@ -91,6 +93,7 @@ the tmux-style keybindings in `herdr/config.toml` with:
 | `bye` | cleanup + kill tmux server |
 | `edit <work-script>` | edit a work script; creates it in `bin/setups` if absent |
 | `nginxctl on\|off\|restart\|status` | manage the nginx web server and explorer API |
+| `mdreview list\|reply\|resolve ...` | read and answer review comments on rendered Markdown |
 
 ## Work Scripts
 

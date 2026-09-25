@@ -48,3 +48,33 @@ test("footnote and LaTeX syntax pass through as literal text", () => {
   assert.ok(html.includes("\\int_0^1 x\\,dx"));
   assert.ok(!html.includes('class="katex"'), "LaTeX should not be rendered as an equation");
 });
+
+const traced = renderMarkdown(fixture, undefined, { sourceLines: true });
+
+test("top-level blocks carry 1-based line ranges against the raw file", () => {
+  const first = traced.blocks[0];
+  assert.deepEqual([first.line, first.endLine, first.text], [6, 6, "# Markdown demo"]);
+  const byText = (prefix: string) => traced.blocks.find(b => b.text.startsWith(prefix));
+  assert.deepEqual([byText("- tight item one")?.line, byText("- tight item one")?.endLine], [20, 22], "a list is one block");
+  assert.deepEqual([byText("- first")?.line, byText("- first")?.endLine], [29, 31], "a loose list keeps its blank line");
+  assert.deepEqual([byText("| Left")?.line, byText("| Left")?.endLine], [40, 43], "a table is one block");
+  assert.deepEqual([byText("```js")?.line, byText("```js")?.endLine], [47, 52], "a fence includes both delimiters");
+  assert.deepEqual([byText("> A blockquote.")?.line, byText("> A blockquote.")?.endLine], [62, 64], "a blockquote is one block");
+  assert.ok(!traced.blocks.some(b => b.text.startsWith("</details>")), "a closing tag is not a block");
+  assert.ok(traced.html.includes('<h1 data-line="6" data-end="6" id="markdown-demo">'));
+  assert.ok(traced.html.includes('<ul data-line="20" data-end="22">'));
+});
+
+test("source line attributes are opt-in and change nothing else", () => {
+  assert.ok(!html.includes("data-line"));
+  assert.equal(traced.html.replace(/ data-line="\d+" data-end="\d+"/g, ""), html);
+  assert.deepEqual(renderMarkdown(fixture).blocks, traced.blocks);
+});
+
+test("a document without front matter starts at line 1", () => {
+  const { blocks } = renderMarkdown("Para one.\n\n\nPara two\ncontinues.\n");
+  assert.deepEqual(blocks, [
+    { line: 1, endLine: 1, text: "Para one." },
+    { line: 4, endLine: 5, text: "Para two\ncontinues." },
+  ]);
+});

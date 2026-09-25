@@ -1,0 +1,131 @@
+/* Review comments: the side panel, the composer, and the controls over the
+ * rendered document. Block marks are classes on the renderer's own
+ * [data-line] elements, so they add no wrapper and change no content rule. */
+
+/* ---------- layout ---------- */
+.md-viewer main.with-review { max-width: 1600px; }
+.md-viewer article.rv-host { position: relative; }
+#review {
+  flex: 0 0 320px; position: sticky; top: 76px; align-self: flex-start;
+  max-height: calc(100vh - 100px); overflow-y: auto;
+  font-size: 13px; line-height: 1.5;
+  border-left: 1px solid var(--border); padding-left: 14px;
+}
+@media (max-width: 1400px) {
+  .md-viewer main.with-review #toc { display: none; }
+}
+@media (max-width: 1100px) {
+  /* stretch: Chrome applies align-self to a fixed box, and flex-start
+   * would shrink the drawer to its content instead of the viewport. */
+  #review {
+    position: fixed; top: 52px; right: 0; bottom: 0; z-index: 15; align-self: stretch;
+    width: min(380px, 92vw); max-height: none; padding: 12px 14px;
+    background: var(--bg); box-shadow: -4px 0 16px rgba(0, 0, 0, .14);
+  }
+}
+
+/* ---------- panel ---------- */
+.rv-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+.rv-head > span:first-child {
+  color: var(--fg-muted); font-weight: 600; text-transform: uppercase;
+  letter-spacing: .04em; font-size: 11px;
+}
+.rv-grow { flex: 1 1 auto; }
+.rv-link {
+  padding: 0; border: 0; background: none; cursor: pointer;
+  font: inherit; font-size: 12px; color: var(--link);
+}
+.rv-link:hover { text-decoration: underline; }
+.rv-link.danger { color: var(--del); }
+.rv-link:disabled, .btn:disabled { opacity: .5; cursor: default; }
+.rv-group, .rv-fold summary {
+  margin: 14px 0 6px; font-size: 11px; color: var(--fg-muted);
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.rv-fold summary { cursor: pointer; }
+.rv-empty { margin: 4px 0 12px; }
+.rv-note { width: 100%; margin-top: 8px; }
+.rv-error { margin-top: 6px; font-size: 12px; color: var(--del); }
+.rv-error.card { margin: 0 0 10px; font-family: var(--sans); }
+
+.rv-card {
+  margin-bottom: 10px; padding: 10px 12px;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+.rv-card.active { border-color: var(--link); box-shadow: 0 0 0 1px var(--link); }
+.rv-card.resolved { opacity: .82; }
+.rv-meta { display: flex; align-items: baseline; gap: 6px; cursor: pointer; }
+.rv-reply .rv-meta { cursor: default; }
+.rv-line { font-family: var(--mono); font-size: 11px; color: var(--fg-muted); }
+.rv-badge {
+  padding: 0 6px; border: 1px solid currentColor; border-radius: 10px;
+  font-size: 10px; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--fg-muted);
+}
+.rv-badge.moved, .rv-badge.quote { color: var(--code-num); }
+.rv-badge.fixed { color: var(--ok); }
+.rv-badge.answered { color: var(--link); }
+.rv-badge.wontfix { color: var(--del); }
+.rv-quote {
+  margin: 6px 0; padding: 1px 8px; font-size: 12px; color: var(--quote);
+  border-left: 3px solid var(--mark);
+}
+.rv-body { white-space: pre-wrap; overflow-wrap: anywhere; }
+.rv-reply { margin-top: 8px; padding-left: 10px; border-left: 2px solid var(--border); }
+.rv-actions { display: flex; gap: 12px; margin-top: 6px; }
+.rv-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+
+.rv-composer {
+  margin-bottom: 12px; padding: 10px 12px;
+  background: var(--bg-soft); border: 1px solid var(--link); border-radius: 8px;
+}
+.rv-composer.inline { margin: 8px 0 0; padding: 0; background: none; border: 0; }
+.rv-composer textarea {
+  display: block; width: 100%; margin-top: 6px; padding: 6px 8px; resize: vertical;
+  font: inherit; font-size: 13px; color: var(--fg); background: var(--bg);
+  border: 1px solid var(--border); border-radius: 6px;
+}
+.rv-target { font-family: var(--mono); font-size: 11px; color: var(--fg-muted); }
+
+/* ---------- controls over the document ---------- */
+.rv-gutter {
+  position: absolute; left: -38px; z-index: 5; width: 34px; padding-top: 2px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.rv-plus, .rv-count {
+  width: 24px; height: 24px; padding: 0; border-radius: 50%;
+  font-family: var(--sans); font-size: 15px; line-height: 22px;
+  color: var(--fg-muted); background: var(--bg);
+  border: 1px solid var(--border); box-shadow: var(--shadow); cursor: pointer;
+}
+.rv-plus:hover { color: #fff; background: var(--link); border-color: var(--link); }
+.rv-count { font-size: 11px; color: var(--fg); background: var(--mark); border-color: var(--mark); }
+.rv-selbtn {
+  position: absolute; z-index: 6; transform: translateX(-100%);
+  padding: 3px 10px; white-space: nowrap;
+  font-family: var(--sans); font-size: 12px; line-height: 1.5;
+  color: #fff; background: var(--link); border: 1px solid var(--link); border-radius: 6px;
+  box-shadow: var(--shadow); cursor: pointer;
+}
+.rv-selbtn.no { color: var(--fg-muted); background: var(--bg-soft); border-color: var(--border); cursor: default; }
+@media (max-width: 900px) {
+  .rv-gutter { left: auto; right: -14px; }
+}
+
+/* ---------- block marks ---------- */
+.markdown-body .rv-marked {
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--mark) 16%, transparent);
+  box-shadow: -8px 0 0 0 color-mix(in srgb, var(--mark) 75%, transparent);
+}
+.markdown-body .rv-draft { box-shadow: -8px 0 0 0 var(--link); }
+.markdown-body .rv-flash { animation: rv-flash 1.4s ease-out; }
+@keyframes rv-flash {
+  from { background: color-mix(in srgb, var(--link) 28%, transparent); }
+}
+
+@media print {
+  #review, .rv-gutter, .rv-selbtn { display: none; }
+  .markdown-body .rv-marked { background: none; box-shadow: none; }
+}

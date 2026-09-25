@@ -6,12 +6,13 @@
 //   node build.mts --watch      rebuild on save
 //   node build.mts --out <dir>  write dist/app into <dir> instead (dev loop against a throwaway nginx)
 //
-// dist/app is the only output: one shell (index.html), one script (app.js),
-// one sheet (app.css), and the tab icon (favicon.svg). Every viewer conf
+// dist/app is the only output: one shell (index.html), one ES module
+// (app.js), one sheet (app.css), the tab icon (favicon.svg), and chunks/,
+// the modules that app.js imports on demand (Mermaid). Every viewer conf
 // rewrites to /__app/index.html; the app picks the viewer from
 // location.pathname and the query string.
 import { build, context } from "esbuild";
-import { mkdirSync, copyFileSync } from "node:fs";
+import { mkdirSync, copyFileSync, rmSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -23,6 +24,8 @@ const outIdx = args.indexOf("--out");
 const appOut = outIdx !== -1 ? args[outIdx + 1] : join(BASE_DIR, "dist", "app");
 
 function copyShell() {
+  // Chunk names carry a content hash, so clear the old ones out.
+  rmSync(join(appOut, "chunks"), { recursive: true, force: true });
   mkdirSync(appOut, { recursive: true });
   copyFileSync(join(BASE_DIR, "src", "index.html"), join(appOut, "index.html"));
   copyFileSync(join(BASE_DIR, "src", "favicon.svg"), join(appOut, "favicon.svg"));
@@ -31,7 +34,11 @@ function copyShell() {
 const esbuildOptions = {
   entryPoints: [join(BASE_DIR, "src", "main.tsx")],
   bundle: true,
-  outfile: join(appOut, "app.js"),
+  outdir: appOut,
+  entryNames: "app",
+  chunkNames: "chunks/[name]-[hash]",
+  format: "esm" as const,
+  splitting: true,
   minify: !dev,
   sourcemap: true,
   jsx: "automatic" as const,

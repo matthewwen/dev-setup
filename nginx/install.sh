@@ -239,7 +239,12 @@ elif [[ -n "$(find "${BASE_DIR}/src" "${BASE_DIR}/build.mts" "${BASE_DIR}/packag
 fi
 if ((NEED_BUILD)); then
   echo "Building the app (dist/ is missing or stale)..."
-  [[ -d "${BASE_DIR}/node_modules" ]] || (cd "$BASE_DIR" && npm install)
+  # npm writes node_modules/.package-lock.json on each install. If package.json
+  # is newer, a dependency changed after the last install.
+  if [[ ! -f "${BASE_DIR}/node_modules/.package-lock.json" \
+      || "${BASE_DIR}/package.json" -nt "${BASE_DIR}/node_modules/.package-lock.json" ]]; then
+    (cd "$BASE_DIR" && npm install)
+  fi
   (cd "$BASE_DIR" && npm run build)
 fi
 

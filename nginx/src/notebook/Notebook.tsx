@@ -1,4 +1,6 @@
+import { useRef } from "react";
 import { CopyButton } from "../shared/CopyButton";
+import { useMermaid } from "../markdown/mermaid";
 import type { CellModel, NotebookModel, OutputModel } from "./render";
 import "./Notebook.css";
 import "../markdown/Markdown.css";
@@ -86,12 +88,14 @@ function Cell({ cell }: { cell: CellModel }) {
 }
 
 export function Notebook({ model }: { model: NotebookModel }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useMermaid(ref, model);
   return (
     <>
       <div id="meta">
         {model.kernel} &middot; {model.cellCount} cells &middot; nbformat {model.nbformat}
       </div>
-      <div id="body">
+      <div id="body" ref={ref}>
         {model.cells.map((cell, i) => (
           <Cell key={i} cell={cell} />
         ))}

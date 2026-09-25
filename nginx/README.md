@@ -42,7 +42,7 @@ Installed layout:
   dev-setup/
     manifest.json             source checkout, git SHA, platform, file hashes
     conf/                     rendered confs and a copy of the hosts file
-    app/                      index.html, app.js, app.css, source maps
+    app/                      index.html, app.js, app.css, chunks/, source maps
 ```
 
 Nothing in the config dir links back to the checkout.
@@ -222,14 +222,19 @@ http://localhost/scratch/gym/auctioneer-capacity-planning/README.md
 
 The viewer renders headings with anchors, tight and loose lists, task lists,
 tables with alignment, fenced code with a language label and a copy button,
-`diff` blocks, blockquotes, `<details>` sections, images, and YAML front matter.
-It builds a contents sidebar, follows the OS light/dark preference, and keeps a
+`diff` blocks, `mermaid` diagrams, blockquotes, `<details>` sections, images,
+and YAML front matter. It builds a contents sidebar, follows the OS light/dark preference, and keeps a
 manual theme toggle in `localStorage`.
 
 - The renderer is one pure function in `src/markdown/render.ts`. It needs no
   network and no third-party code, so it works on a disconnected host.
-- Unsupported by design: footnotes, LaTeX, and Mermaid. They render as literal
-  text.
+- A `mermaid` fence renders as its source first. Then `src/markdown/mermaid.ts`
+  replaces the source with the diagram. If the source does not parse, the
+  block shows the parse error above the source.
+- The build puts Mermaid in `dist/app/chunks/`. A page loads it only when the
+  page has a diagram. The chunks ship with the app, so diagrams also work on a
+  disconnected host.
+- Unsupported by design: footnotes and LaTeX. They render as literal text.
 - `test/fixtures/markdown-demo.md` exercises every construct. `npm test`
   checks it by assertion; open it through nginx to check an install by eye.
 
@@ -517,7 +522,7 @@ without it, browsing and name search still work.
 ## Notebooks
 
 Opening a `.ipynb` file in the browser renders the notebook. Markdown cells go
-through the shared renderer, code cells get the same highlighter with an
+through the shared renderer, with Mermaid diagrams, code cells get the same highlighter with an
 `In [n]` gutter, and outputs render as text, sanitized HTML (pandas tables),
 images, or error tracebacks with ANSI codes stripped. The Raw button and
 `?raw=1` return the notebook JSON. Notebooks over 8 MiB, usually from embedded

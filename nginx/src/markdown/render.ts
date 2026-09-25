@@ -199,6 +199,11 @@ export function renderMarkdown(src: string, sharedSlugs?: Map<string, number>, o
         buf.push(lines[i++].slice(strip));
       }
       i++;
+      // The source stays visible until the Markdown component swaps in the diagram.
+      if (lang.toLowerCase() === "mermaid") {
+        out.push(`<div class="mermaid"><pre><code>${esc(buf.join("\n"))}</code></pre></div>`);
+        return i;
+      }
       out.push(
         `<pre><button class="copy">copy</button>${lang ? `<span class="lang">${esc(lang)}</span>` : ""}` +
           `<code>${highlight(buf.join("\n"), lang)}</code></pre>`,

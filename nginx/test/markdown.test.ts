@@ -31,6 +31,11 @@ test("fenced code carries a language label and a copy button", () => {
   assert.match(html, /<pre><button class="copy">copy<\/button><span class="lang">js<\/span><code>/);
 });
 
+test("a mermaid fence renders as escaped source in a .mermaid block", () => {
+  const out = renderMarkdown("```mermaid\ngraph TD\n  A --> B<br>\n```\n", undefined, { sourceLines: true }).html;
+  assert.equal(out, '<div data-line="1" data-end="4" class="mermaid"><pre><code>graph TD\n  A --&gt; B&lt;br&gt;</code></pre></div>');
+});
+
 test("a diff block highlights added and removed lines", () => {
   assert.ok(html.includes('<span class="diff-d">- removed line</span>'));
   assert.ok(html.includes('<span class="diff-a">+ added line</span>'));

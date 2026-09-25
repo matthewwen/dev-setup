@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, type RefObject } from "react";
 import { renderMarkdown, type Block, type Heading } from "./render";
+import { useMermaid } from "./mermaid";
 import "./Markdown.css";
 
 // Renders Markdown source to HTML and wires the copy buttons the renderer
@@ -23,6 +24,7 @@ export function Markdown({
 }) {
   const { fm, html, headings, blocks } = useMemo(() => renderMarkdown(src, undefined, { sourceLines }), [src, sourceLines]);
   const ref = useRef<HTMLDivElement>(null);
+  useMermaid(ref, html);
 
   useEffect(() => {
     onHeadings?.(headings);

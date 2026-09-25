@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -14,6 +14,8 @@ test("the build writes index.html, app.js, app.css, and favicon.svg", () => {
   execFileSync("node", ["build.mts", "--out", outDir], { cwd: BASE_DIR, stdio: "inherit" });
   const html = readFileSync(join(outDir, "index.html"), "utf8");
   const js = readFileSync(join(outDir, "app.js"), "utf8");
+  const chunks = readdirSync(join(outDir, "chunks")).filter(f => f.endsWith(".js"));
+  assert.ok(chunks.length > 0, "the build wrote no chunks for Mermaid");
   readFileSync(join(outDir, "app.css"), "utf8");
   readFileSync(join(outDir, "favicon.svg"), "utf8");
 
@@ -27,10 +29,13 @@ test("the build writes index.html, app.js, app.css, and favicon.svg", () => {
   }
 
   // No known CDN host, and no dynamic import of a remote URL - the app ships
-  // React inside app.js so the site works on a disconnected host.
+  // React and Mermaid in dist/app so the site works on a disconnected host.
   const cdnHosts = ["unpkg.com", "jsdelivr.net", "cdnjs.cloudflare.com", "googleapis.com", "esm.sh"];
-  for (const host of cdnHosts) {
-    assert.ok(!js.includes(host), `app.js references CDN host ${host}`);
+  const scripts = [["app.js", js], ...chunks.map(f => [f, readFileSync(join(outDir, "chunks", f), "utf8")])];
+  for (const [name, code] of scripts) {
+    for (const host of cdnHosts) {
+      assert.ok(!code.includes(host), `${name} references CDN host ${host}`);
+    }
+    assert.ok(!/\bimport\(\s*["'`]https?:/.test(code), `${name} dynamically imports a remote URL`);
   }
-  assert.ok(!/\bimport\(\s*["'`]https?:/.test(js), "app.js dynamically imports a remote URL");
 });

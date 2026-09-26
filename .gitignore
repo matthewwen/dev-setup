@@ -1,3 +1,5 @@
 nvim/lazy-lock.json
 *.log
 nginx/conf/hosts.local.conf
+**/__pycache__/
+nginx/package-lock.json

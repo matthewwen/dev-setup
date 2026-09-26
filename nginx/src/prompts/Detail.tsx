@@ -277,6 +277,7 @@ export function Detail({ taskId, onBack }: { taskId: number; onBack: () => void 
   const [title, setTitle] = useState("");
   const [tagsText, setTagsText] = useState("");
   const [promptText, setPromptText] = useState("");
+  const [promptExpanded, setPromptExpanded] = useState(false);
   const [notesText, setNotesText] = useState("");
   const [refs, setRefs] = useState<RefDraft[]>([]);
   const [refsError, setRefsError] = useState<string | null>(null);
@@ -327,7 +328,13 @@ export function Detail({ taskId, onBack }: { taskId: number; onBack: () => void 
     };
   }, [taskId]);
 
-  useEffect(() => autoGrow(promptRef.current), [promptText]);
+  useEffect(() => {
+    if (promptExpanded) {
+      autoGrow(promptRef.current);
+    } else {
+      promptRef.current?.style.removeProperty("height");
+    }
+  }, [promptText, promptExpanded]);
   useEffect(() => autoGrow(notesRef.current), [notesText]);
 
   async function saveField(field: string, value: unknown) {
@@ -493,10 +500,20 @@ export function Detail({ taskId, onBack }: { taskId: number; onBack: () => void 
         </p>
 
         <label className="pfield">
-          <span className="plabel">Prompt</span>
+          <span className="plabel prompt-label">
+            Prompt
+            <button
+              className="btn prompt-toggle"
+              type="button"
+              onClick={() => setPromptExpanded(expanded => !expanded)}
+              aria-expanded={promptExpanded}
+            >
+              {promptExpanded ? "Minimize" : "Expand"}
+            </button>
+          </span>
           <textarea
             ref={promptRef}
-            className="pgrow"
+            className={`pgrow${promptExpanded ? "" : " prompt-minimized"}`}
             value={promptText}
             onChange={e => setPromptText(e.target.value)}
             onBlur={() => promptAuto.flush()}

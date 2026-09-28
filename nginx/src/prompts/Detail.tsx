@@ -337,6 +337,13 @@ export function Detail({ taskId, onBack }: { taskId: number; onBack: () => void 
   }, [promptText, promptExpanded]);
   useEffect(() => autoGrow(notesRef.current), [notesText]);
 
+  const heading = title || `#${taskId}`;
+  useEffect(() => {
+    if (task) {
+      document.title = `prompt: ${heading}`;
+    }
+  }, [task, heading]);
+
   async function saveField(field: string, value: unknown) {
     const res = await apiPrompts("task.update", { id: taskId, [field]: value });
     if (!res.ok) {
@@ -474,7 +481,7 @@ export function Detail({ taskId, onBack }: { taskId: number; onBack: () => void 
     <div className="prompts pdetail">
       <header className="phead">
         <h1>
-          <a href="/prompts/" onClick={e => { e.preventDefault(); onBack(); }}>Prompts</a> › #{task.id}
+          <a href="/prompts/" onClick={e => { e.preventDefault(); onBack(); }}>Prompts</a> › {heading}
         </h1>
         <span className={`pstatus ${firstError ? "error" : ""}`}>{statusText}</span>
         <div className="pactions">

@@ -17,6 +17,9 @@ export function App() {
   const viewer = pickViewer(path, search);
 
   useEffect(() => {
+    if (viewer === "prompts") {
+      return;
+    }
     document.title = viewer === "explorer" ? "Files" : path.split("/").filter(Boolean).pop() ?? "dev-setup";
   }, [path, viewer]);
 

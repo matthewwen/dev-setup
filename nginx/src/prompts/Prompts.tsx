@@ -16,11 +16,19 @@ function readTaskId(pathname: string): number | null {
 export function Prompts() {
   const [pathname, setPathname] = useState(() => window.location.pathname);
 
+  const taskId = readTaskId(pathname);
+
   useEffect(() => {
     const onPop = () => setPathname(window.location.pathname);
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
+
+  useEffect(() => {
+    if (taskId === null) {
+      document.title = "Prompts";
+    }
+  }, [taskId]);
 
   const navigate = useCallback((path: string) => {
     if (path !== window.location.pathname) {
@@ -37,7 +45,6 @@ export function Prompts() {
     navigate(`/prompts/${res.task.id}`);
   }, [navigate]);
 
-  const taskId = readTaskId(pathname);
   if (taskId !== null) {
     return <Detail taskId={taskId} onBack={() => navigate("/prompts/")} />;
   }

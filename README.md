@@ -205,6 +205,12 @@ Key bindings:
 
 ## Claude Code
 
+Install every skill in `skills/` as a global Claude Code skill (symlinks into
+`~/.claude/skills/`):
+```bash
+./skills/install.sh
+```
+
 Symlink the status line script:
 ```bash
 ln -sf $(pwd)/tmux/claude-status.sh ~/.tmux/claude-status.sh

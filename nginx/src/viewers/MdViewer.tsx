@@ -5,6 +5,7 @@ import { Markdown } from "../markdown/Markdown";
 import { tocEntries, shouldShowToc } from "../markdown/toc";
 import type { Block, Heading } from "../markdown/render";
 import { fetchRaw, textViewUrl } from "../shared/fetch";
+import { useMediaQuery } from "../shared/media";
 import type { ReviewComment } from "../shared/review-api";
 import { ReviewPanel, type Draft } from "../review/ReviewPanel";
 import { DocOverlay } from "../review/DocOverlay";
@@ -15,6 +16,9 @@ import "./MdViewer.css";
 // Rendering a very large document blocks the page, so SizeGuard asks first
 // and offers the buffered text viewer.
 const BIG_BYTES = 2 * 1024 * 1024;
+
+const NARROW = "(max-width: 900px)";
+const NARROW_WITH_REVIEW = "(max-width: 1400px)";
 
 function MdLoader({ path, onLoaded, onError }: { path: string; onLoaded: (text: string) => void; onError: (msg: string) => void }) {
   useEffect(() => {
@@ -42,11 +46,19 @@ export function MdViewer({ path }: { path: string }) {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [headings, setHeadings] = useState<Heading[]>([]);
   const [tocHidden, setTocHidden] = useState(() => localStorage.getItem("md-toc") === "0");
+  const [tocDrawer, setTocDrawer] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const scrolledHashRef = useRef(false);
+  const [reviewOpen, setReviewOpen] = useState(() => localStorage.getItem("md-comments") === "1");
+  const tocFits = !useMediaQuery(reviewOpen ? NARROW_WITH_REVIEW : NARROW);
 
   const entries = useMemo(() => tocEntries(headings), [headings]);
-  const showToc = shouldShowToc(entries) && !tocHidden;
+  const hasToc = shouldShowToc(entries);
+  const sidebar = hasToc && tocFits && !tocHidden;
+  const showToc = sidebar || (hasToc && !tocFits && tocDrawer);
+  if (tocFits && tocDrawer) {
+    setTocDrawer(false);
+  }
 
   // Follows the reader's position in the document once the TOC is showing.
   useEffect(() => {
@@ -81,6 +93,10 @@ export function MdViewer({ path }: { path: string }) {
   }, [raw]);
 
   const toggleToc = () => {
+    if (!tocFits) {
+      setTocDrawer(open => !open);
+      return;
+    }
     setTocHidden(hidden => {
       const next = !hidden;
       localStorage.setItem("md-toc", next ? "0" : "1");
@@ -93,7 +109,6 @@ export function MdViewer({ path }: { path: string }) {
   const review = useReview(path, loaded);
   const { refresh } = review;
   const [blocks, setBlocks] = useState<Block[]>([]);
-  const [reviewOpen, setReviewOpen] = useState(() => localStorage.getItem("md-comments") === "1");
   const [draft, setDraft] = useState<Draft | null>(null);
   const [activeComment, setActiveComment] = useState<string | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -172,18 +187,24 @@ export function MdViewer({ path }: { path: string }) {
             <button className={`btn${reviewOpen ? " on" : ""}`} onClick={() => showReview(!reviewOpen)} title="Toggle comments">
               Comments{openCount ? ` ${openCount}` : ""}
             </button>
-            <button className="btn" onClick={toggleToc} title="Toggle contents">
+            <button className={`btn${tocDrawer ? " on" : ""}`} onClick={toggleToc} title="Toggle contents">
               &#9776;
             </button>
           </>
         }
       />
-      <main className={`${showToc ? "" : "no-toc"}${reviewOpen ? " with-review" : ""}`}>
+      <main className={`${sidebar ? "" : "no-toc"}${reviewOpen ? " with-review" : ""}`}>
+        {showToc && !tocFits && <div className="toc-backdrop" onClick={() => setTocDrawer(false)} />}
         {showToc && (
-          <nav id="toc">
+          <nav id="toc" className={tocFits ? "" : "drawer"}>
             <div>Contents</div>
             {entries.map(h => (
-              <a key={h.id} className={`lvl${h.lvl}${h.id === activeId ? " active" : ""}`} href={`#${h.id}`}>
+              <a
+                key={h.id}
+                className={`lvl${h.lvl}${h.id === activeId ? " active" : ""}`}
+                href={`#${h.id}`}
+                onClick={() => setTocDrawer(false)}
+              >
                 {h.text}
               </a>
             ))}

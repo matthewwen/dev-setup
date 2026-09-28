@@ -11,9 +11,6 @@
   font-size: 13px; line-height: 1.5;
   border-left: 1px solid var(--border); padding-left: 14px;
 }
-@media (max-width: 1400px) {
-  .md-viewer main.with-review #toc { display: none; }
-}
 @media (max-width: 1100px) {
   /* stretch: Chrome applies align-self to a fixed box, and flex-start
    * would shrink the drawer to its content instead of the viewport. */

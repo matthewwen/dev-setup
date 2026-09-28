@@ -3,6 +3,7 @@ import { apiFacets, apiPrompts, apiTask } from "./api";
 import type { Run, Task } from "./types";
 import { Stars } from "./Library";
 import { useAutosave } from "./useAutosave";
+import { onListKeyDown } from "./listKeys";
 import { CopyButton } from "../shared/CopyButton";
 import { useTheme } from "../app/theme";
 import "./Prompts.css";
@@ -145,7 +146,7 @@ function RunForm({
         </label>
       </div>
       <label className="rform-notes">
-        notes <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} />
+        notes <textarea value={notes} onChange={e => setNotes(e.target.value)} onKeyDown={onListKeyDown} rows={2} />
       </label>
       {error && <p className="error">{error}</p>}
       <div className="rform-actions">
@@ -524,6 +525,7 @@ export function Detail({ taskId, onBack }: { taskId: number; onBack: () => void 
             value={promptText}
             onChange={e => setPromptText(e.target.value)}
             onBlur={() => promptAuto.flush()}
+            onKeyDown={onListKeyDown}
             autoFocus={!task.prompt}
             rows={6}
           />
@@ -537,6 +539,7 @@ export function Detail({ taskId, onBack }: { taskId: number; onBack: () => void 
             value={notesText}
             onChange={e => setNotesText(e.target.value)}
             onBlur={() => notesAuto.flush()}
+            onKeyDown={onListKeyDown}
             rows={3}
           />
         </label>

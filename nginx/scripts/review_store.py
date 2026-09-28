@@ -99,6 +99,17 @@ def list_keys(prefix=""):
     return sorted(keys)
 
 
+def prune_missing_markdown(root, apply=False):
+    keys = [
+        key for key in list_keys()
+        if key.lower().endswith(".md") and not os.path.isfile(os.path.join(root, *key.split("/")))
+    ]
+    if apply:
+        for key in keys:
+            os.unlink(store_path(key))
+    return keys
+
+
 def move(old_key, new_key):
     """Rename a document's store file after the document moved."""
     src = store_path(old_key)

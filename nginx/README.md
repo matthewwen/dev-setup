@@ -287,6 +287,8 @@ mdreview resolve k3f9a2 --action fixed --author agent   # or answered, wontfix
 mdreview reopen k3f9a2
 mdreview rm k3f9a2
 mdreview mv /notes/plan.md /notes/plan-v2.md       # after you rename a document
+mdreview prune                                     # list stores for deleted .md files
+mdreview prune --apply                             # remove those stores
 ```
 
 `--path` takes a filesystem path or a webroot path. The webroot comes from
@@ -335,6 +337,10 @@ ${XDG_STATE_HOME:-~/.local/state}/dev-setup/md-review/<webroot path>.jsonl
 Each line is one event: `comment`, `reply`, `status`, or `delete`. The current
 state is the replay of the events in order. A delete hides a comment and keeps
 its events. Set `MD_REVIEW_DIR` to use a different directory.
+
+`mdreview prune` checks every stored `.md` key against its matching logical
+path under the webroot (including top-level symlinks). It only lists stale
+stores until `--apply` is supplied.
 
 ### Limits
 

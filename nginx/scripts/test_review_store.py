@@ -240,6 +240,16 @@ class ApplyTest(StoreCase):
         with self.assertRaises(FileNotFoundError):
             store.move(self.key, "proj/docs/other.md")
 
+    def test_prune_missing_markdown(self):
+        self.add(1)
+        store.apply("proj/docs/gone.md", "comment", {"author": "matt", "body": "gone"}, None)
+        store.apply("proj/docs/gone.txt", "comment", {"author": "matt", "body": "keep"}, None)
+
+        self.assertEqual(store.prune_missing_markdown(self.root), ["proj/docs/gone.md"])
+        self.assertEqual(store.list_keys(), ["proj/docs/gone.md", "proj/docs/gone.txt", self.key])
+        self.assertEqual(store.prune_missing_markdown(self.root, apply=True), ["proj/docs/gone.md"])
+        self.assertEqual(store.list_keys(), ["proj/docs/gone.txt", self.key])
+
 
 class CliTest(StoreCase):
     def run_cli(self, *args):
@@ -284,6 +294,14 @@ class CliTest(StoreCase):
         self.run_cli("mv", "/proj/docs/notes.md", renamed)
         listing = json.loads(self.run_cli("list", "--path", renamed, "--json"))
         self.assertEqual(listing["comments"][0]["resolved"]["confidence"], "document")
+
+    def test_prune_is_dry_run_until_apply(self):
+        self.run_cli("add", "--path", self.doc, "--body", "Document note.")
+        os.remove(self.doc)
+        self.assertIn("would remove /proj/docs/notes.md", self.run_cli("prune"))
+        self.assertIn(self.key, store.list_keys())
+        self.assertIn("removed /proj/docs/notes.md", self.run_cli("prune", "--apply"))
+        self.assertEqual(store.list_keys(), [])
 
 
 class ApiTest(StoreCase):

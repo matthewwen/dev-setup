@@ -15,6 +15,7 @@ Usage:
   mdreview reopen  <id> [--path P]
   mdreview rm      <id> [--path P]
   mdreview mv      <old> <new>
+  mdreview prune   [--apply]
 
 --path accepts a filesystem path or a webroot-relative path. The webroot comes
 from --root, then $NGINX_ROOT, then ~/html, then /usr/share/nginx/html.
@@ -206,6 +207,18 @@ def cmd_mv(opts):
     print("%s -> %s" % (old_key, new_key))
 
 
+def cmd_prune(opts):
+    keys = store.prune_missing_markdown(opts.root, opts.apply)
+    if not keys:
+        print("no stale Markdown comment stores")
+        return
+    verb = "removed" if opts.apply else "would remove"
+    for key in keys:
+        print("%s /%s" % (verb, key))
+    if not opts.apply:
+        print("run again with --apply to remove them")
+
+
 # ============================================================================
 # Argument parsing
 # ============================================================================
@@ -273,6 +286,10 @@ def build_parser():
     p.add_argument("old")
     p.add_argument("new")
     p.set_defaults(func=cmd_mv)
+
+    p = sub.add_parser("prune", help="remove comment stores for deleted Markdown files")
+    p.add_argument("--apply", action="store_true", help="remove stores; otherwise only list them")
+    p.set_defaults(func=cmd_prune)
     return parser
 
 

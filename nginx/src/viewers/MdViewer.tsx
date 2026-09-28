@@ -77,7 +77,7 @@ export function MdViewer({ path }: { path: string }) {
       return;
     }
     scrolledHashRef.current = true;
-    document.querySelector(decodeURIComponent(location.hash))?.scrollIntoView();
+    document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
   }, [raw]);
 
   const toggleToc = () => {

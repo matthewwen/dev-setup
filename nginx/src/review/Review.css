@@ -113,10 +113,19 @@
 /* ---------- block marks ---------- */
 .markdown-body .rv-marked {
   border-radius: 2px;
-  background: color-mix(in srgb, var(--mark) 16%, transparent);
   box-shadow: -8px 0 0 0 color-mix(in srgb, var(--mark) 75%, transparent);
 }
+.markdown-body .rv-marked.rv-whole { background: color-mix(in srgb, var(--mark) 16%, transparent); }
 .markdown-body .rv-draft { box-shadow: -8px 0 0 0 var(--link); }
+.markdown-body .rv-draft.rv-whole { background: color-mix(in srgb, var(--link) 12%, transparent); }
+.markdown-body li.rv-marked, .markdown-body li.rv-draft { position: relative; box-shadow: none; }
+.markdown-body li.rv-marked::before, .markdown-body li.rv-draft::before {
+  content: ""; position: absolute; top: 0; bottom: 0; left: -34px; width: 8px; border-radius: 2px;
+  background: color-mix(in srgb, var(--mark) 75%, transparent);
+}
+.markdown-body li.rv-draft::before { background: var(--link); }
+::highlight(rv-selection) { background: color-mix(in srgb, var(--mark) 45%, transparent); }
+::highlight(rv-draft-selection) { background: color-mix(in srgb, var(--link) 28%, transparent); }
 .markdown-body .rv-flash { animation: rv-flash 1.4s ease-out; }
 @keyframes rv-flash {
   from { background: color-mix(in srgb, var(--link) 28%, transparent); }
@@ -125,4 +134,6 @@
 @media print {
   #review, .rv-gutter, .rv-selbtn { display: none; }
   .markdown-body .rv-marked { background: none; box-shadow: none; }
+  .markdown-body li.rv-marked::before { display: none; }
+  ::highlight(rv-selection) { background: none; }
 }

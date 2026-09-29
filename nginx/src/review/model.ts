@@ -32,9 +32,15 @@ export function blockAt(blocks: Block[], line: number): Block | undefined {
   return blocks.find(b => b.line <= line && line <= b.endLine);
 }
 
-// Block start line to the ids of the open comments that land in it.
-export function markedBlocks(comments: ReviewComment[], blocks: Block[]): Map<number, string[]> {
-  const marks = new Map<number, string[]>();
+// Block start line to the open comments that land in it.
+export interface BlockMark {
+  ids: string[];
+  whole: boolean;
+  selections: string[];
+}
+
+export function markedBlocks(comments: ReviewComment[], blocks: Block[]): Map<number, BlockMark> {
+  const marks = new Map<number, BlockMark>();
   for (const c of comments) {
     if (c.status !== "open" || c.resolved.line === undefined) {
       continue;
@@ -43,7 +49,14 @@ export function markedBlocks(comments: ReviewComment[], blocks: Block[]): Map<nu
     if (!block) {
       continue;
     }
-    marks.set(block.line, [...(marks.get(block.line) ?? []), c.id]);
+    const mark = marks.get(block.line) ?? { ids: [], whole: false, selections: [] };
+    mark.ids.push(c.id);
+    if (c.anchor.selection) {
+      mark.selections.push(c.anchor.selection);
+    } else {
+      mark.whole = true;
+    }
+    marks.set(block.line, mark);
   }
   return marks;
 }

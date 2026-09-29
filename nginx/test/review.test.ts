@@ -62,10 +62,17 @@ test("only open, located comments mark a block", () => {
       comment("bbbbbb", { resolved: { confidence: "quote", line: 4, endLine: 4 } }),
       comment("cccccc", { status: "resolved", action: "answered" }),
       comment("dddddd", { resolved: { confidence: "orphan" } }),
+      comment("eeeeee", { anchor: { line: 6, endLine: 7, selection: "two" }, resolved: { confidence: "exact", line: 6, endLine: 7 } }),
     ],
     blocks,
   );
-  assert.deepEqual([...marks], [[3, ["aaaaaa", "bbbbbb"]]]);
+  assert.deepEqual(
+    [...marks],
+    [
+      [3, { ids: ["aaaaaa", "bbbbbb"], whole: true, selections: [] }],
+      [6, { ids: ["eeeeee"], whole: false, selections: ["two"] }],
+    ],
+  );
 });
 
 test("labels and times read the way the panel shows them", () => {

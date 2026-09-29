@@ -233,7 +233,7 @@ export function MdViewer({ path }: { path: string }) {
               hostRef={hostRef}
               blocks={blocks}
               marks={marks}
-              draftLine={draft?.line ?? null}
+              draft={draft}
               onComment={startDraft}
               onShow={showComment}
             />

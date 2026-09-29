@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import type { Block } from "../markdown/render";
-import { selectionTarget, type SelectionTarget } from "./model";
+import { selectionTarget, type BlockMark, type SelectionTarget } from "./model";
 import type { Draft } from "./ReviewPanel";
 
 interface Hover {
@@ -19,20 +19,64 @@ interface Sel {
 // listeners on the body, controls positioned over the host, and classes set
 // on the renderer's own [data-line] elements. No wrapper per block, so no
 // Markdown.css sibling or first-child rule changes.
+const highlights = typeof CSS !== "undefined" && "highlights" in CSS && typeof Highlight !== "undefined" ? CSS.highlights : null;
+
+// Selection.toString() adds whitespace between cells and items that the text nodes do not hold.
+function findRange(el: Element, text: string): Range | null {
+  const words = text.trim().split(/\s+/);
+  if (!words[0]) {
+    return null;
+  }
+  const nodes: Text[] = [];
+  let all = "";
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    nodes.push(n as Text);
+    all += (n as Text).data;
+  }
+  const escaped = words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const m = new RegExp(escaped.join("\\s+")).exec(all) ?? new RegExp(escaped.join("\\s*")).exec(all);
+  if (!m) {
+    return null;
+  }
+  const range = document.createRange();
+  const start = m.index;
+  const end = start + m[0].length;
+  let pos = 0;
+  for (const node of nodes) {
+    if (start >= pos && start < pos + node.length) {
+      range.setStart(node, start - pos);
+    }
+    if (end > pos && end <= pos + node.length) {
+      range.setEnd(node, end - pos);
+      break;
+    }
+    pos += node.length;
+  }
+  return range;
+}
+
+function holderOf(block: Element, range: Range): Element {
+  const node = range.commonAncestorContainer;
+  const from = node instanceof Element ? node : node.parentElement;
+  const holder = from?.closest("li") ?? from?.closest("tr, p, h1, h2, h3, h4, h5, h6, dt, dd");
+  return holder && block.contains(holder) ? holder : block;
+}
+
 export function DocOverlay({
   bodyRef,
   hostRef,
   blocks,
   marks,
-  draftLine,
+  draft,
   onComment,
   onShow,
 }: {
   bodyRef: RefObject<HTMLDivElement>;
   hostRef: RefObject<HTMLElement>;
   blocks: Block[];
-  marks: Map<number, string[]>;
-  draftLine: number | null;
+  marks: Map<number, BlockMark>;
+  draft: Draft | null;
   onComment: (draft: Draft) => void;
   onShow: (id: string) => void;
 }) {
@@ -106,26 +150,47 @@ export function DocOverlay({
       return;
     }
     const touched: Element[] = [];
-    const mark = (line: number, cls: string) => {
+    const ranges: Record<string, Range[]> = { "rv-selection": [], "rv-draft-selection": [] };
+    const add = (el: Element, cls: string[]) => {
+      el.classList.add(...cls);
+      touched.push(el);
+    };
+    const mark = (line: number, cls: string[], selections: string[], name: string) => {
       const el = body.querySelector(`[data-line="${line}"]`);
-      if (el) {
-        el.classList.add(cls);
-        touched.push(el);
+      if (!el) {
+        return;
+      }
+      const found = highlights ? selections.map(t => findRange(el, t)) : [];
+      if (!selections.length || !found.every(r => r)) {
+        add(el, [...cls, "rv-whole"]);
+        return;
+      }
+      for (const range of found as Range[]) {
+        ranges[name].push(range);
+        add(holderOf(el, range), cls);
       }
     };
-    marks.forEach((_ids, line) => mark(line, "rv-marked"));
-    if (draftLine !== null) {
-      mark(draftLine, "rv-draft");
+    marks.forEach((m, line) => mark(line, ["rv-marked"], m.whole ? [] : m.selections, "rv-selection"));
+    if (draft?.line != null) {
+      mark(draft.line, ["rv-draft"], draft.selection ? [draft.selection] : [], "rv-draft-selection");
+    }
+    for (const [name, list] of Object.entries(ranges)) {
+      if (list.length) {
+        highlights?.set(name, new Highlight(...list));
+      }
     }
     return () => {
       for (const el of touched) {
-        el.classList.remove("rv-marked", "rv-draft");
+        el.classList.remove("rv-marked", "rv-draft", "rv-whole");
+      }
+      for (const name of Object.keys(ranges)) {
+        highlights?.delete(name);
       }
     };
-  }, [bodyRef, blocks, marks, draftLine]);
+  }, [bodyRef, blocks, marks, draft]);
 
   const block = hover ? blocks.find(b => b.line === hover.line) : undefined;
-  const ids = hover ? marks.get(hover.line) : undefined;
+  const ids = hover ? marks.get(hover.line)?.ids : undefined;
 
   const commentOnSelection = () => {
     if (!sel?.target.ok) {

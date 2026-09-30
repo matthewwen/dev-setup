@@ -100,6 +100,32 @@ html_path() {
     echo "$HOME/html"
 }
 
+html_link() {
+    local input=${1:-.}
+    local start dest name
+    (
+        if [[ -d "$input" ]]; then
+            cd -- "$input" || return
+            start=$PWD
+        elif [[ -e "$input" || -L "$input" ]]; then
+            cd -- "${input:h}" || return
+            start="$PWD/${input:t}"
+        else
+            echo "html_link: no such file or directory: $input" >&2
+            return 1
+        fi
+
+        name=${start:t}
+        dest=${2:-$name}
+        html
+        if [[ -d "$dest" || "$dest" == */ ]]; then
+            dest="${dest%/}/$name"
+        fi
+        mkdir -p -- "${dest:h}" || return
+        ln -s "$start" "$dest"
+    )
+}
+
 workspace() {
     start_tmux_session "workspace"
     tmux a -t workspace

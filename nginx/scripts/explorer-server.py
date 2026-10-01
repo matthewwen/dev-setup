@@ -72,7 +72,7 @@ def resolve_scope(rel):
     return rel, target
 
 
-def resolve_file(rel, must_exist=False):
+def resolve_file(rel, must_exist=False, follow_links=True):
     """Resolve one webroot-relative file path without allowing an escape."""
     rel = (rel or "").strip().lstrip("/")
     if not rel or "\0" in rel:
@@ -83,8 +83,8 @@ def resolve_file(rel, must_exist=False):
         raise ValueError("path is outside the webroot")
     if target == os.path.realpath(ROOT):
         raise ValueError("the webroot itself cannot be changed")
-    if os.path.islink(raw):
-        raise ValueError("refusing to change a symlink")
+    if not follow_links and os.path.islink(raw):
+        raise ValueError("refusing to delete a symlink")
     if must_exist and not os.path.lexists(raw):
         raise FileNotFoundError("path does not exist")
     return target
@@ -131,7 +131,7 @@ def make_directory(rel):
 
 def delete_path(rel):
     """Delete one file or an empty directory inside an allowed webroot."""
-    target = resolve_file(rel, must_exist=True)
+    target = resolve_file(rel, must_exist=True, follow_links=False)
     if os.path.isdir(target):
         os.rmdir(target)
     else:

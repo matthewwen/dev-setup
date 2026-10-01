@@ -203,10 +203,10 @@ Key bindings:
 - `M-Up` — enter copy mode (vi keys)
 - `prefix + $` — renew environment variables in all panes
 
-## Claude Code
+## Claude Code and Codex
 
-Install every skill in `skills/` as a global Claude Code skill (symlinks into
-`~/.claude/skills/`):
+Install every skill in `skills/` globally for both Claude Code and Codex
+(symlinks into `~/.claude/skills/` and `~/.codex/skills/`):
 ```bash
 ./skills/install.sh
 ```

@@ -18,11 +18,13 @@ writes. The browser shows every reply and resolution on the next window focus.
 ## Run mdreview
 
 Use the `mdreview` shell command when it exists. `dev/common.sh` defines it.
-If the command is not found, run the script through this skill's own link:
+If the command is not found, run the script through the installed skill link.
+This works for both Codex and Claude Code:
 
 ```bash
-MDREVIEW="python3 $(readlink -f ~/.claude/skills/md-review)/../../nginx/scripts/mdreview.py"
-$MDREVIEW list
+SKILL_DIR="${CODEX_SKILLS_DIR:-${CODEX_HOME:-$HOME/.codex}/skills}/md-review"
+[ -d "$SKILL_DIR" ] || SKILL_DIR="${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}/md-review"
+python3 "$SKILL_DIR/../../nginx/scripts/mdreview.py" list
 ```
 
 `--path` accepts a filesystem path or a webroot path such as

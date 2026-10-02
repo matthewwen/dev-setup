@@ -19,7 +19,7 @@
 .md-viewer article { flex: 1 1 auto; min-width: 0; max-width: 860px; }
 .md-viewer main.no-toc article { margin: 0 auto; }
 .md-viewer #toc.drawer {
-  position: fixed; top: 52px; left: 0; bottom: 0; z-index: 15;
+  position: fixed; top: 52px; left: 0; bottom: 0; z-index: 15; align-self: stretch;
   width: min(300px, 85vw); max-height: none; padding: 12px 16px;
   background: var(--bg); border-left: 0; border-right: 1px solid var(--border);
   box-shadow: 4px 0 16px rgba(0, 0, 0, .14);

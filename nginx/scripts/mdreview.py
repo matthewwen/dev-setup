@@ -11,6 +11,7 @@ Usage:
   mdreview show    <id> [--path P] [--json]
   mdreview add     --path P [--line N] [--end-line M] --body TEXT
   mdreview reply   <id> --body TEXT [--author agent] [--path P]
+  mdreview edit    <id> --body TEXT [--reply N] [--path P]
   mdreview resolve <id> --action fixed|answered|wontfix [--body TEXT] [--path P]
   mdreview reopen  <id> [--path P]
   mdreview rm      <id> [--path P]
@@ -183,6 +184,14 @@ def cmd_reply(opts):
     print(opts.id)
 
 
+def cmd_edit(opts):
+    extra = {"body": opts.body}
+    if opts.reply is not None:
+        extra["reply"] = opts.reply
+    mutate(opts, "edit", extra)
+    print(opts.id)
+
+
 def cmd_resolve(opts):
     if opts.body:
         mutate(opts, "reply", {"body": opts.body})
@@ -261,6 +270,14 @@ def build_parser():
     with_author(p)
     with_target(p, "document, only needed when the id exists in several documents")
     p.set_defaults(func=cmd_reply)
+
+    p = sub.add_parser("edit", help="rewrite the body of a comment or of one reply")
+    p.add_argument("id")
+    p.add_argument("--body", required=True)
+    p.add_argument("--reply", type=int, help="0-based index of the reply to rewrite; omit for the comment itself")
+    with_author(p)
+    with_target(p, "document, only needed when the id exists in several documents")
+    p.set_defaults(func=cmd_edit)
 
     p = sub.add_parser("resolve", help="resolve a comment")
     p.add_argument("id")

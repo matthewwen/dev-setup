@@ -54,6 +54,13 @@
 .rv-card.resolved { opacity: .82; }
 .rv-meta { display: flex; align-items: baseline; gap: 6px; cursor: pointer; }
 .rv-reply .rv-meta { cursor: default; }
+.rv-pencil {
+  padding: 0 2px; border: 0; background: none; cursor: pointer;
+  font-size: 13px; line-height: 1; color: var(--fg-muted); opacity: .4;
+}
+.rv-card:hover .rv-pencil, .rv-pencil:focus-visible { opacity: 1; }
+.rv-pencil:hover { color: var(--link); }
+.rv-edited { margin-left: 6px; font-size: 11px; }
 .rv-line { font-family: var(--mono); font-size: 11px; color: var(--fg-muted); }
 .rv-badge {
   padding: 0 6px; border: 1px solid currentColor; border-radius: 10px;

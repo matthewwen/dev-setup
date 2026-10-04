@@ -112,12 +112,16 @@ class ReplayTest(unittest.TestCase):
             {"ev": "status", "id": "aaaaaa", "author": "m", "ts": "5", "status": "open"},
             {"ev": "delete", "id": "bbbbbb", "author": "m", "ts": "6"},
             {"ev": "reply", "id": "zzzzzz", "author": "m", "ts": "7", "body": "ignored"},
+            {"ev": "edit", "id": "aaaaaa", "author": "m", "ts": "8", "body": "one, revised"},
+            {"ev": "edit", "id": "aaaaaa", "author": "agent", "ts": "9", "reply": 0, "body": "done, revised"},
+            {"ev": "edit", "id": "aaaaaa", "author": "agent", "ts": "10", "reply": 5, "body": "ignored"},
         ]
         comments = store.replay(events)
         self.assertEqual(sorted(comments), ["aaaaaa"])
         self.assertEqual(comments["aaaaaa"]["status"], "open")
         self.assertIsNone(comments["aaaaaa"]["action"])
-        self.assertEqual([r["body"] for r in comments["aaaaaa"]["replies"]], ["done"])
+        self.assertEqual((comments["aaaaaa"]["body"], comments["aaaaaa"]["edited"]), ("one, revised", "8"))
+        self.assertEqual([(r["body"], r["edited"]) for r in comments["aaaaaa"]["replies"]], [("done, revised", "9")])
 
 
 class ResolveTest(StoreCase):
@@ -184,6 +188,21 @@ class ApplyTest(StoreCase):
         store.apply(self.key, "delete", {"id": cid, "author": "matt"}, None)
         self.assertEqual(store.load(self.key), {})
         self.assertEqual(len(store.read_events(self.key)), 4, "events stay on disk")
+
+    def test_edit_comment_and_reply(self):
+        cid = self.add(9, body="This number is stale.")
+        store.apply(self.key, "reply", {"id": cid, "author": "agent", "body": "Re-measured."}, None)
+        store.apply(self.key, "edit", {"id": cid, "author": "matt", "body": "This number is wrong."}, None)
+        store.apply(self.key, "edit", {"id": cid, "author": "agent", "reply": 0, "body": "Re-measured: 106 MiB."}, None)
+        comment = store.load(self.key)[cid]
+        self.assertEqual(comment["body"], "This number is wrong.")
+        self.assertTrue(comment["edited"])
+        self.assertEqual(comment["replies"][0]["body"], "Re-measured: 106 MiB.")
+        self.assertTrue(comment["replies"][0]["edited"])
+        with self.assertRaises(ValueError):
+            store.apply(self.key, "edit", {"id": cid, "reply": 1, "body": "x"}, None)
+        with self.assertRaises(ValueError):
+            store.apply(self.key, "edit", {"id": cid, "body": "  "}, None)
 
     def test_stale_page_is_rejected(self):
         with self.assertRaises(ValueError) as caught:

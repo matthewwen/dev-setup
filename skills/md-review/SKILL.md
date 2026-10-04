@@ -49,7 +49,8 @@ python3 "$SKILL_DIR/../../nginx/scripts/mdreview.py" list
 9. Report the comments that you resolved and the comments that stay open.
 
 `mdreview resolve <id> --action <a> --body "<text>" --author agent` replies
-and resolves in one command.
+and resolves in one command. `mdreview edit <id> --reply N --body "<text>"`
+rewrites one of your own replies; do not edit the reviewer's comment body.
 
 ## Choose the action
 

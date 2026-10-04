@@ -28,7 +28,7 @@ QUOTE_WINDOW_LINES = 8
 
 ID_RE = re.compile(r"^[a-z2-7]{6}$")
 ID_ALPHABET = "abcdefghijklmnopqrstuvwxyz234567"
-EVENTS = ("comment", "reply", "status", "delete")
+EVENTS = ("comment", "reply", "edit", "status", "delete")
 STATUSES = ("open", "resolved")
 ACTIONS = ("fixed", "answered", "wontfix")
 
@@ -308,8 +308,9 @@ def append(key, event):
 def replay(events):
     """Fold events, in order, into the current comments keyed by id.
 
-    The last status event wins. A delete event removes the comment from every
-    listing. Events for an unknown id are ignored.
+    The last status event wins. An edit event replaces the body of the comment
+    or, with a reply index, of one reply. A delete event removes the comment
+    from every listing. Events for an unknown id are ignored.
     """
     comments = {}
     for event in events:
@@ -336,6 +337,16 @@ def replay(events):
                 "ts": event.get("ts", ""),
                 "body": event.get("body", ""),
             })
+        elif kind == "edit":
+            reply_index = event.get("reply")
+            if reply_index is None:
+                target = comment
+            elif isinstance(reply_index, int) and 0 <= reply_index < len(comment["replies"]):
+                target = comment["replies"][reply_index]
+            else:
+                continue
+            target["body"] = event.get("body", "")
+            target["edited"] = event.get("ts", "")
         elif kind == "status":
             comment["status"] = event.get("status", "open")
             comment["action"] = event.get("action") if comment["status"] == "resolved" else None
@@ -401,6 +412,13 @@ def apply(key, op, payload, lines):
         raise ValueError("no comment %s in %s" % (cid or "(none)", key))
     if op == "reply":
         event = {"ev": "reply", "id": cid, "ts": stamp, "author": author, "body": clean_body(payload.get("body"))}
+    elif op == "edit":
+        event = {"ev": "edit", "id": cid, "ts": stamp, "author": author, "body": clean_body(payload.get("body"))}
+        reply_index = payload.get("reply")
+        if reply_index is not None:
+            if not isinstance(reply_index, int) or not 0 <= reply_index < len(comments[cid]["replies"]):
+                raise ValueError("reply must index an existing reply of %s" % cid)
+            event["reply"] = reply_index
     elif op == "status":
         status = payload.get("status")
         if status not in STATUSES:
@@ -413,7 +431,7 @@ def apply(key, op, payload, lines):
     elif op == "delete":
         event = {"ev": "delete", "id": cid, "ts": stamp, "author": author}
     else:
-        raise ValueError("op must be comment, reply, status, or delete")
+        raise ValueError("op must be comment, reply, edit, status, or delete")
     append(key, event)
     return cid
 

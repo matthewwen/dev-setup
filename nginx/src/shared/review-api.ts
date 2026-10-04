@@ -26,6 +26,7 @@ export interface Reply {
   author: string;
   ts: string;
   body: string;
+  edited?: string;
 }
 
 export interface ReviewComment {
@@ -35,6 +36,7 @@ export interface ReviewComment {
   author: string;
   ts: string;
   body: string;
+  edited?: string;
   anchor: Anchor;
   resolved: Resolved;
   replies: Reply[];
@@ -62,6 +64,7 @@ export interface NewAnchor {
 export type ReviewOp =
   | { op: "comment"; body: string; anchor: NewAnchor | null }
   | { op: "reply"; id: string; body: string }
+  | { op: "edit"; id: string; body: string; reply?: number }
   | { op: "status"; id: string; status: "open" }
   | { op: "status"; id: string; status: "resolved"; action: Action }
   | { op: "delete"; id: string };

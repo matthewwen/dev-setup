@@ -93,8 +93,57 @@ function Composer({ draft, review, onDone }: { draft: Draft; review: ReviewState
   );
 }
 
+function Editor({ initial, busy, onSave, onCancel }: { initial: string; busy: boolean; onSave: (body: string) => void; onCancel: () => void }) {
+  const [body, setBody] = useState(initial);
+  const changed = body.trim() && body.trim() !== initial.trim();
+  const save = () => {
+    if (changed) {
+      onSave(body);
+    }
+  };
+  return (
+    <div className="rv-composer inline">
+      <textarea autoFocus rows={3} value={body} onChange={e => setBody(e.target.value)} onKeyDown={keys(save, onCancel)} />
+      <div className="rv-row">
+        <span className="rv-grow" />
+        <button className="btn" onClick={onCancel}>
+          Cancel
+        </button>
+        <button className="btn on" disabled={!changed || busy} onClick={save} title="Ctrl+Enter">
+          Save
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Pencil({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      className="rv-pencil"
+      title="Edit"
+      aria-label="Edit"
+      onClick={e => {
+        e.stopPropagation();
+        onClick();
+      }}
+    >
+      ✎
+    </button>
+  );
+}
+
+function Edited({ ts }: { ts?: string }) {
+  return ts ? (
+    <span className="muted rv-edited" title={`edited ${ts}`}>
+      (edited)
+    </span>
+  ) : null;
+}
+
 function Card({ c, review, active, onPick }: { c: ReviewComment; review: ReviewState; active: boolean; onPick: (c: ReviewComment) => void }) {
-  const [mode, setMode] = useState<"idle" | "reply" | "resolve">("idle");
+  const [mode, setMode] = useState<"idle" | "reply" | "resolve" | "edit">("idle");
+  const [editing, setEditing] = useState<number | null>(null);
   const [reply, setReply] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -106,8 +155,16 @@ function Card({ c, review, active, onPick }: { c: ReviewComment; review: ReviewS
     setError(err);
     if (!err) {
       setMode("idle");
+      setEditing(null);
       setReply("");
     }
+  };
+  const edit = (index: number | null) => {
+    setEditing(index);
+    setMode("edit");
+  };
+  const save = (body: string) => {
+    void run(editing === null ? { op: "edit", id: c.id, body } : { op: "edit", id: c.id, body, reply: editing });
   };
   const sendReply = () => {
     if (reply.trim()) {
@@ -140,9 +197,17 @@ function Card({ c, review, active, onPick }: { c: ReviewComment; review: ReviewS
           </span>
         )}
         {resolved && c.action && <span className={`rv-badge ${c.action}`}>{ACTION_LABELS[c.action]}</span>}
+        {mode === "idle" && <Pencil onClick={() => edit(null)} />}
       </div>
       {quote && <blockquote className="rv-quote">{excerpt(quote, 200)}</blockquote>}
-      <div className="rv-body">{c.body}</div>
+      {mode === "edit" && editing === null ? (
+        <Editor initial={c.body} busy={busy} onSave={save} onCancel={() => setMode("idle")} />
+      ) : (
+        <div className="rv-body">
+          {c.body}
+          <Edited ts={c.edited} />
+        </div>
+      )}
       {c.replies.map((r, i) => (
         <div key={i} className="rv-reply">
           <div className="rv-meta">
@@ -150,8 +215,17 @@ function Card({ c, review, active, onPick }: { c: ReviewComment; review: ReviewS
             <span className="muted" title={r.ts}>
               {relativeTime(r.ts)}
             </span>
+            <span className="rv-grow" />
+            {mode === "idle" && <Pencil onClick={() => edit(i)} />}
           </div>
-          <div className="rv-body">{r.body}</div>
+          {mode === "edit" && editing === i ? (
+            <Editor initial={r.body} busy={busy} onSave={save} onCancel={() => setMode("idle")} />
+          ) : (
+            <div className="rv-body">
+              {r.body}
+              <Edited ts={r.edited} />
+            </div>
+          )}
         </div>
       ))}
       {mode === "reply" && (

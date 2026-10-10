@@ -117,11 +117,14 @@ function relabel(value: string, start: number, end: number, ls: number, m: RegEx
 export function enterEdit(value: string, start: number, end: number): Edit | null {
   const ls = lineStart(value, start);
   const le = lineEnd(value, start);
-  const m = listItem(value.slice(ls, le));
-  if (!m || start - ls < m[0].length) {
+  const line = value.slice(ls, le);
+  const own = listItem(line);
+  const m = own ?? owningItem(value, ls, line);
+  const head = own ? own[0].length : /^[ \t]*/.exec(line)![0].length;
+  if (!m || start - ls < head) {
     return null;
   }
-  if (start === end && value.slice(ls + m[0].length, le).trim() === "") {
+  if (start === end && line.slice(head).trim() === "") {
     return { from: ls, to: le, text: "", caret: [ls, ls] };
   }
   const [, indent, open, label, delim] = m;
@@ -134,13 +137,115 @@ export function enterEdit(value: string, start: number, end: number): Edit | nul
   return { from: start, to: end, text, caret: [caret, caret] };
 }
 
-export function backspaceEdit(value: string, start: number, end: number): Edit | null {
-  const ls = lineStart(value, start);
-  const m = start === end ? listItem(value.slice(ls, lineEnd(value, start))) : null;
-  if (!m || start !== ls + m[0].length) {
+function itemIndent(m: RegExpExecArray): string {
+  return m[1] + " ".repeat(m[0].length - m[1].length);
+}
+
+function owningItem(value: string, ls: number, line: string): RegExpExecArray | null {
+  const ws = /^[ \t]*/.exec(line)![0];
+  if (ws === "") {
     return null;
   }
-  return { from: ls, to: start, text: "", caret: [ls, ls] };
+  for (let end = ls - 1; end >= 0; ) {
+    const start = lineStart(value, end);
+    const prev = value.slice(start, end);
+    end = start - 1;
+    if (prev.trim() === "") {
+      continue;
+    }
+    if (/^[ \t]*/.exec(prev)![0].length >= ws.length) {
+      continue;
+    }
+    return listItem(prev);
+  }
+  return null;
+}
+
+function continuationIndent(value: string, ls: number, line: string): string | null {
+  const m = listItem(line);
+  if (m) {
+    return itemIndent(m);
+  }
+  return owningItem(value, ls, line) ? /^[ \t]*/.exec(line)![0] : null;
+}
+
+export function softBreakEdit(value: string, start: number, end: number): Edit | null {
+  const ls = lineStart(value, start);
+  const indent = continuationIndent(value, ls, value.slice(ls, lineEnd(value, start)));
+  if (indent === null || start - ls < indent.length) {
+    return null;
+  }
+  const text = `\n${indent}`;
+  const caret = start + text.length;
+  return { from: start, to: end, text, caret: [caret, caret] };
+}
+
+export function backspaceEdit(value: string, start: number, end: number): Edit | null {
+  if (start !== end) {
+    return null;
+  }
+  const ls = lineStart(value, start);
+  const line = value.slice(ls, lineEnd(value, start));
+  const m = listItem(line);
+  if (m) {
+    return start === ls + m[0].length ? { from: ls, to: start, text: "", caret: [ls, ls] } : null;
+  }
+  const indent = continuationIndent(value, ls, line);
+  if (indent === null || ls === 0 || start !== ls + indent.length) {
+    return null;
+  }
+  const prev = value.slice(lineStart(value, ls - 1), ls - 1);
+  if (prev.trim() === "") {
+    return null;
+  }
+  const text = prev.endsWith(" ") ? "" : " ";
+  const caret = ls - 1 + text.length;
+  return { from: ls - 1, to: start, text, caret: [caret, caret] };
+}
+
+export function wrapEdit(
+  value: string,
+  start: number,
+  end: number,
+  key: string,
+  fits: (line: string) => boolean,
+): Edit | null {
+  if (start !== end) {
+    return null;
+  }
+  const ls = lineStart(value, start);
+  const line = value.slice(ls, lineEnd(value, start));
+  const indent = continuationIndent(value, ls, line);
+  if (indent === null) {
+    return null;
+  }
+  const col = start - ls;
+  const next = line.slice(0, col) + key + line.slice(col);
+  if (fits(next)) {
+    return null;
+  }
+  const at = next.lastIndexOf(" ", col - 1);
+  if (at < indent.length) {
+    return null;
+  }
+  const text = `\n${indent}`;
+  const caret = start - 1 + text.length;
+  return { from: ls + at, to: ls + at + 1, text, caret: [caret, caret] };
+}
+
+let measure: CanvasRenderingContext2D | null | undefined;
+
+function lineFits(el: HTMLTextAreaElement): (line: string) => boolean {
+  measure ??= document.createElement("canvas").getContext("2d");
+  const cs = getComputedStyle(el);
+  const width = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  if (!measure || !(width > 0)) {
+    return () => true;
+  }
+  measure.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  const tab = " ".repeat(Number(cs.tabSize) || 8);
+  const ctx = measure;
+  return line => ctx.measureText(line.replace(/\t/g, tab)).width <= width;
 }
 
 export function indentEdit(value: string, start: number, end: number, outdent: boolean): Edit | null {
@@ -187,12 +292,20 @@ export function onListKeyDown(e: KeyboardEvent<HTMLTextAreaElement>): void {
   const el = e.currentTarget;
   const { value, selectionStart, selectionEnd } = el;
   let edit: Edit | null = null;
-  if (e.key === "Enter" && !e.shiftKey) {
-    edit = enterEdit(value, selectionStart, selectionEnd);
+  if (e.key === "Enter") {
+    edit = e.shiftKey
+      ? softBreakEdit(value, selectionStart, selectionEnd)
+      : enterEdit(value, selectionStart, selectionEnd);
   } else if (e.key === "Tab") {
     edit = indentEdit(value, selectionStart, selectionEnd, e.shiftKey);
   } else if (e.key === "Backspace") {
     edit = backspaceEdit(value, selectionStart, selectionEnd);
+  } else if (e.key.length === 1 && e.key !== " ") {
+    edit = wrapEdit(value, selectionStart, selectionEnd, e.key, lineFits(el));
+    if (edit) {
+      apply(el, edit);
+    }
+    return;
   }
   if (!edit) {
     return;

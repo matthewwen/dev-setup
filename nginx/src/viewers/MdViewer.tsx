@@ -7,7 +7,7 @@ import type { Block, Heading } from "../markdown/render";
 import { fetchRaw, textViewUrl } from "../shared/fetch";
 import { useMediaQuery } from "../shared/media";
 import type { ReviewComment } from "../shared/review-api";
-import { ReviewPanel, type Draft } from "../review/ReviewPanel";
+import { ReviewPanel, revealInPanel, type Draft } from "../review/ReviewPanel";
 import { DocOverlay } from "../review/DocOverlay";
 import { useReview } from "../review/useReview";
 import { blockAt, markedBlocks } from "../review/model";
@@ -175,7 +175,7 @@ export function MdViewer({ path }: { path: string }) {
   const showComment = (id: string) => {
     setActiveComment(id);
     showReview(true);
-    requestAnimationFrame(() => document.getElementById(`rv-${id}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
+    requestAnimationFrame(() => revealInPanel(document.getElementById(`rv-${id}`)));
   };
 
   return (

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { backspaceEdit, enterEdit, indentEdit, type Edit } from "../src/prompts/listKeys.ts";
+import { backspaceEdit, enterEdit, indentEdit, softBreakEdit, wrapEdit, type Edit } from "../src/prompts/listKeys.ts";
 
 function run(value: string, edit: Edit | null): string | null {
   return edit && value.slice(0, edit.from) + edit.text + value.slice(edit.to);
@@ -91,4 +91,38 @@ test("tab and shift-tab shift every selected line", () => {
   assert.deepEqual(edit?.caret, [2, 8]);
   assert.equal(run("  a\n b", indentEdit("  a\n b", 0, 6, true)), "a\nb");
   assert.equal(indentEdit("a", 0, 0, true), null);
+});
+
+const fits = (n: number) => (line: string) => line.length <= n;
+
+test("a nested item wraps under its own text", () => {
+  const v = "1. foo\n  a. bar baz";
+  assert.equal(run(v, wrapEdit(v, v.length, v.length, "x", fits(12))), "1. foo\n  a. bar\n     baz");
+});
+
+test("a single long word does not wrap", () => {
+  assert.equal(wrapEdit("1. foooooooo", 12, 12, "x", fits(10)), null);
+});
+
+test("indented text outside a list does not wrap", () => {
+  const v = "foo\n    bar baz";
+  assert.equal(wrapEdit(v, v.length, v.length, "x", fits(8)), null);
+});
+
+test("backspace after a blank line keeps the paragraph", () => {
+  assert.equal(backspaceEdit("1. foo\n\n   bar", 11, 11), null);
+});
+
+test("enter on a wrapped nested line continues the nested item", () => {
+  const v = "1. foo\n  a. bar\n     baz";
+  assert.equal(run(v, enterEdit(v, v.length, v.length)), "1. foo\n  a. bar\n     baz\n  b. ");
+});
+
+test("enter on an empty continuation line clears its indent", () => {
+  const v = "1. foo\n   ";
+  assert.equal(run(v, enterEdit(v, v.length, v.length)), "1. foo\n");
+});
+
+test("shift-enter outside a list does nothing", () => {
+  assert.equal(softBreakEdit("foo bar", 3, 3), null);
 });

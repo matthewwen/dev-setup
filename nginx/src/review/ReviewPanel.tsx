@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type TextareaHTMLAttributes } from "react";
 import type { Action, ReviewComment, ReviewOp } from "../shared/review-api";
 import type { ReviewState } from "./useReview";
 import { ACTION_LABELS, excerpt, groupComments, lineLabel, relativeTime } from "./model";
+import { onListKeyDown } from "../prompts/listKeys";
 import "./Review.css";
 
 // What the composer comments on: a block (optionally a phrase inside it),
@@ -13,17 +14,48 @@ export interface Draft {
   selection?: string;
 }
 
-// Cmd/Ctrl+Enter submits and Escape cancels, in every text box the panel owns.
+// Cmd/Ctrl+Enter submits and Escape cancels, in every text box the panel
+// owns. Tab indents instead of moving focus out of the box.
 function keys(submit: () => void, cancel: () => void) {
-  return (e: KeyboardEvent<HTMLElement>) => {
+  return (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
       submit();
     } else if (e.key === "Escape") {
       e.preventDefault();
       cancel();
+    } else {
+      onListKeyDown(e);
     }
   };
+}
+
+// Focus without scrolling the page; the panel moves only when the element is
+// outside its own viewport.
+export function revealInPanel(el: HTMLElement | null, focus = false): void {
+  if (!el) {
+    return;
+  }
+  if (focus) {
+    el.focus({ preventScroll: true });
+  }
+  const panel = el.closest("#review");
+  if (!(panel instanceof HTMLElement)) {
+    return;
+  }
+  const box = panel.getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  if (r.top < box.top) {
+    panel.scrollTop += r.top - box.top - 8;
+  } else if (r.bottom > box.bottom) {
+    panel.scrollTop += r.bottom - box.bottom + 8;
+  }
+}
+
+function FocusArea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => revealInPanel(ref.current, true), []);
+  return <textarea ref={ref} {...props} />;
 }
 
 function Composer({ draft, review, onDone }: { draft: Draft; review: ReviewState; onDone: (stale: boolean) => void }) {
@@ -32,9 +64,7 @@ function Composer({ draft, review, onDone }: { draft: Draft; review: ReviewState
   const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => {
-    ref.current?.focus();
-  }, [draft]);
+  useEffect(() => revealInPanel(ref.current, true), [draft]);
 
   const submit = async () => {
     if (!body.trim() || busy) {
@@ -103,7 +133,7 @@ function Editor({ initial, busy, onSave, onCancel }: { initial: string; busy: bo
   };
   return (
     <div className="rv-composer inline">
-      <textarea autoFocus rows={3} value={body} onChange={e => setBody(e.target.value)} onKeyDown={keys(save, onCancel)} />
+      <FocusArea rows={3} value={body} onChange={e => setBody(e.target.value)} onKeyDown={keys(save, onCancel)} />
       <div className="rv-row">
         <span className="rv-grow" />
         <button className="btn" onClick={onCancel}>
@@ -123,6 +153,7 @@ function Pencil({ onClick }: { onClick: () => void }) {
       className="rv-pencil"
       title="Edit"
       aria-label="Edit"
+      tabIndex={-1}
       onClick={e => {
         e.stopPropagation();
         onClick();
@@ -230,8 +261,7 @@ function Card({ c, review, active, onPick }: { c: ReviewComment; review: ReviewS
       ))}
       {mode === "reply" && (
         <div className="rv-composer inline">
-          <textarea
-            autoFocus
+          <FocusArea
             rows={3}
             value={reply}
             placeholder="Reply"

@@ -47,6 +47,17 @@ allowed-tools: Read Glob Grep
 - Before you add a test, name the edge case it protects. If you cannot,
   do not add it.
 
+### Implementation order
+
+- Build the bare minimum first. It must run end to end on the main path,
+  and nothing more.
+- Add refinements only after the minimum works: error paths, defaults,
+  limits, hardening, cleanup.
+- Do not ask for a refinement, and do not block a step or a gate on one,
+  while the minimum is in progress. The minimum can change the design fast.
+- Write each refinement that you notice in a backlog list in the plan.
+  Tell the user it is there. Then continue with the minimum.
+
 ### Layout
 
 - Brace every `if`, `else if`, and `else` body, even a single statement.
@@ -102,7 +113,8 @@ one short bullet list only when the reader would otherwise ask.
 ### 5. Implementation plan
 
 Split the solution into chunks the user approves one at a time. Each chunk
-fits in one pull request. For each chunk give:
+fits in one pull request. The first chunk is the bare minimum that runs end
+to end. Later chunks add refinements. For each chunk give:
 
 - Name and the problems it closes (`P1`, `P3`).
 - Files created, by exact path.

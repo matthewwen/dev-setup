@@ -21,7 +21,7 @@ prompt_pwd_short() {
 # ==============================================================================
 agent() {
     # example: ssh into a clouddesktop
-    start_tmux_session agent ssh clouddesk || true
+    start_tmux_session_with_args agent ssh clouddesk || true
     tmux a -t agent
 }
 

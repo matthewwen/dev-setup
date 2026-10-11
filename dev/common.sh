@@ -137,6 +137,7 @@ hub() {
 }
 
 agent() {
+    start_tmux_session_with_args false agent
     tmux a -t agent
 }
 
@@ -281,13 +282,29 @@ start_tmux_target() {
     fi
 }
 
-start_tmux_session() {
+
+start_tmux_session_with_args() {
+    kill_session=${1:-true}
+    shift 1
     session_name=$1
     shift 1
-    if [[ $session_name != "workspace" && $session_name != "hub" ]]; then
+    if [[ $kill_session == "true" ]]; then
         tmux kill-session -t $session_name 2>/dev/null
     fi
     start_tmux_target $session_name $session_name "$@"
+
+}
+
+start_tmux_session() {
+    session_name=$1
+    shift 1
+
+    kill_session="false"
+    if [[ $session_name != "workspace" && $session_name != "hub" ]]; then
+        kill_session="true"
+    fi
+
+    start_tmux_session_with_args $kill_session $session_name "$@"
 }
 
 start_tmux_hub() {

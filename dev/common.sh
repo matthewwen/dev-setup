@@ -271,6 +271,9 @@ start_tmux_target() {
     shift 2
     command="$@"
     if tmux has-session -t $session_name 2>/dev/null; then
+        if tmux list-windows -t $session_name -F '#W' 2>/dev/null | grep -qx -- "$target"; then
+            return 0
+        fi
         if [[ -n $command ]]; then
             tmux new-window -a -t $session_name -n $target
         fi

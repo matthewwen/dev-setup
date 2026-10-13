@@ -12,10 +12,13 @@ export interface AutosaveState {
 // Saves a fast-changing value 800ms after the last change, or immediately via
 // flush() on blur / before the page unloads. A response is dropped unless it
 // belongs to the most recent save this hook sent, so a slow save landing
-// after a newer one can never overwrite what the newer one wrote.
+// after a newer one can never overwrite what the newer one wrote. `saved` is
+// the value the server already holds; a change to it (the task loading) is
+// recorded as saved, so opening a task does not write it back unchanged.
 export function useAutosave(
   value: string,
   save: (value: string) => Promise<void>,
+  saved?: string,
   delayMs = 800,
 ): AutosaveState & { flush: () => void } {
   const debounced = useDebounced(value, delayMs);
@@ -26,6 +29,11 @@ export function useAutosave(
   useEffect(() => {
     valueRef.current = value;
   }, [value]);
+  useEffect(() => {
+    if (saved !== undefined) {
+      savedRef.current = saved;
+    }
+  }, [saved]);
 
   function run(v: string) {
     if (v === savedRef.current) {

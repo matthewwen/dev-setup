@@ -137,6 +137,7 @@ class TaskSummary:
     avg_rating: Optional[float]
     best_model: Optional[str]
     best_rating: Optional[int]
+    created_at: int
     updated_at: int
 
 
@@ -279,6 +280,7 @@ def _set_refs(conn, task_id, refs):
 
 _SORTS = {
     "updated": "t.updated_at DESC",
+    "created": "t.created_at DESC",
     "rating": "avg_rating IS NULL, avg_rating DESC",
     "title": "t.title COLLATE NOCASE ASC",
 }
@@ -316,7 +318,8 @@ def list_tasks(conn, q="", tag="", model="", min_rating=None, sort="updated", li
     join_sql, where_sql, params = _task_filter(q, tag, model, min_rating)
     order_sql = _SORTS.get(sort, _SORTS["updated"])
     sql = (
-        "SELECT t.id AS id, t.title AS title, t.prompt AS prompt, t.updated_at AS updated_at, "
+        "SELECT t.id AS id, t.title AS title, t.prompt AS prompt, t.created_at AS created_at, "
+        "t.updated_at AS updated_at, "
         "(SELECT GROUP_CONCAT(tag, ',') FROM task_tag WHERE task_id = t.id) AS tags_raw, "
         "(SELECT COUNT(*) FROM run WHERE task_id = t.id) AS run_count, "
         "(SELECT AVG(rating) FROM run WHERE task_id = t.id) AS avg_rating, "
@@ -339,6 +342,7 @@ def list_tasks(conn, q="", tag="", model="", min_rating=None, sort="updated", li
             avg_rating=round(r["avg_rating"], 2) if r["avg_rating"] is not None else None,
             best_model=r["best_model"],
             best_rating=r["best_rating"],
+            created_at=r["created_at"],
             updated_at=r["updated_at"],
         ))
     return out

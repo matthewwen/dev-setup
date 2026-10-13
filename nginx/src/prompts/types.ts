@@ -41,6 +41,7 @@ export interface TaskSummary {
   avg_rating: number | null;
   best_model: string | null;
   best_rating: number | null;
+  created_at: number;
   updated_at: number;
 }
 
@@ -53,4 +54,4 @@ export interface ModelScore {
   tasks: number;
 }
 
-export type Sort = "updated" | "rating" | "title";
+export type Sort = "updated" | "created" | "title";

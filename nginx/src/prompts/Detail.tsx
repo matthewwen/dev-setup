@@ -268,7 +268,15 @@ function RunRow({ run, onEdit, onDelete }: { run: Run; onEdit: () => void; onDel
   );
 }
 
-export function Detail({ taskId, onBack }: { taskId: number; onBack: () => void }) {
+export function Detail({
+  taskId,
+  onBack,
+  onHome,
+}: {
+  taskId: number;
+  onBack: () => void;
+  onHome: () => void;
+}) {
   const [theme, toggleTheme] = useTheme();
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
@@ -356,10 +364,10 @@ export function Detail({ taskId, onBack }: { taskId: number; onBack: () => void 
     }
   }
 
-  const titleAuto = useAutosave(title, v => saveField("title", v));
-  const promptAuto = useAutosave(promptText, v => saveField("prompt", v));
-  const notesAuto = useAutosave(notesText, v => saveField("notes", v));
-  const tagsAuto = useAutosave(tagsText, v => saveField("tags", parseTagsClient(v)));
+  const titleAuto = useAutosave(title, v => saveField("title", v), task?.title);
+  const promptAuto = useAutosave(promptText, v => saveField("prompt", v), task?.prompt);
+  const notesAuto = useAutosave(notesText, v => saveField("notes", v), task?.notes);
+  const tagsAuto = useAutosave(tagsText, v => saveField("tags", parseTagsClient(v)), task?.tags.join(", "));
 
   const autosaves = [titleAuto, promptAuto, notesAuto, tagsAuto];
   const anySaving = autosaves.some(a => a.status === "saving");
@@ -482,7 +490,7 @@ export function Detail({ taskId, onBack }: { taskId: number; onBack: () => void 
     <div className="prompts pdetail">
       <header className="phead">
         <h1>
-          <a href="/prompts/" onClick={e => { e.preventDefault(); onBack(); }}>Prompts</a> › {heading}
+          <a href="/prompts/" onClick={e => { e.preventDefault(); onHome(); }}>Prompts</a> › {heading}
         </h1>
         <span className={`pstatus ${firstError ? "error" : ""}`}>{statusText}</span>
         <div className="pactions">

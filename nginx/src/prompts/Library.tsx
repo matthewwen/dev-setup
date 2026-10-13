@@ -3,22 +3,8 @@ import { apiFacets, apiTasks, type FacetsOk, type TasksOk } from "./api";
 import type { Sort, TaskSummary } from "./types";
 import { FindBox, useDebounced } from "../shared/FindBox";
 import { useTheme } from "../app/theme";
+import { formatAgo, groupByDate } from "./dates";
 import "./Prompts.css";
-
-function formatAgo(unixSeconds: number): string {
-  const mins = Math.floor((Date.now() - unixSeconds * 1000) / 60000);
-  if (mins < 1) {
-    return "just now";
-  }
-  if (mins < 60) {
-    return `${mins}m ago`;
-  }
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) {
-    return `${hours}h ago`;
-  }
-  return `${Math.floor(hours / 24)}d ago`;
-}
 
 export function Stars({ value, onSet }: { value: number; onSet: (n: number) => void }) {
   return (
@@ -52,7 +38,11 @@ function TaskRow({ task, onOpen }: { task: TaskSummary; onOpen: (id: number) => 
         <span className="ttags">
           {task.tags.length ? task.tags.join(" · ") : <span className="muted">no tags</span>}
         </span>
-        <span className="muted">{formatAgo(task.updated_at)}</span>
+        <span className="muted tdates">
+          <span title={new Date(task.updated_at * 1000).toLocaleString()}>edited {formatAgo(task.updated_at)}</span>
+          {" · "}
+          <span title={new Date(task.created_at * 1000).toLocaleString()}>created {formatAgo(task.created_at)}</span>
+        </span>
       </div>
       {task.best_model && (
         <div className="tbest muted">best: {task.best_model} ★{task.best_rating}</div>
@@ -116,9 +106,13 @@ function ModelsPanel({
 }
 
 export function Library({
+  tag,
+  onTagChange,
   onOpen,
   onNew,
 }: {
+  tag: string;
+  onTagChange: (tag: string) => void;
   onOpen: (id: number) => void;
   onNew: () => Promise<void>;
 }) {
@@ -127,7 +121,6 @@ export function Library({
 
   const [q, setQ] = useState("");
   const debouncedQ = useDebounced(q, 60);
-  const [selectedTag, setSelectedTag] = useState("");
   const [selectedModel, setSelectedModel] = useState("");
   const [minRating, setMinRating] = useState(0);
   const [sort, setSort] = useState<Sort>("updated");
@@ -149,7 +142,7 @@ export function Library({
     try {
       res = await apiTasks({
         q: debouncedQ,
-        tag: selectedTag,
+        tag,
         model: selectedModel,
         minRating: minRating || undefined,
         sort,
@@ -185,7 +178,7 @@ export function Library({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- loadTasks is a new function every render; only its own inputs should retrigger this
-  }, [debouncedQ, selectedTag, selectedModel, minRating, sort]);
+  }, [debouncedQ, tag, selectedModel, minRating, sort]);
 
   useEffect(() => {
     let cancelled = false;
@@ -200,12 +193,16 @@ export function Library({
   }, [modelsScopeTag]);
 
   const modelNames = facets?.models.map(m => m.model) ?? [];
+  const dateKey = sort === "created" ? "created_at" : sort === "updated" ? "updated_at" : null;
+  const groups: [string, TaskSummary[]][] = dateKey
+    ? groupByDate(rows, task => task[dateKey])
+    : [["", rows]];
 
   return (
     <div className="prompts">
       <header className="phead">
         <h1>
-          <a href="/prompts/" onClick={e => { e.preventDefault(); setView("library"); }}>Prompts</a>
+          <a href="/prompts/" onClick={e => { e.preventDefault(); setView("library"); onTagChange(""); }}>Prompts</a>
           {" "}· {view === "models" ? "Models" : "Library"}
         </h1>
         <div className="pactions">
@@ -233,14 +230,14 @@ export function Library({
 
             <div className="pfacet">
               <h2>Tags</h2>
-              {(facets?.tags ?? []).map(([tag, count]) => (
+              {(facets?.tags ?? []).map(([name, count]) => (
                 <button
-                  key={tag}
+                  key={name}
                   type="button"
-                  className={`pchip ${selectedTag === tag ? "on" : ""}`}
-                  onClick={() => setSelectedTag(selectedTag === tag ? "" : tag)}
+                  className={`pchip ${tag === name ? "on" : ""}`}
+                  onClick={() => onTagChange(tag === name ? "" : name)}
                 >
-                  {tag} <span className="muted">{count}</span>
+                  {name} <span className="muted">{count}</span>
                 </button>
               ))}
               {(facets?.tags ?? []).length === 0 && <p className="muted">No tags yet.</p>}
@@ -279,19 +276,28 @@ export function Library({
                 sort:{" "}
                 <select value={sort} onChange={e => setSort(e.target.value as Sort)}>
                   <option value="updated">updated</option>
-                  <option value="rating">rating</option>
+                  <option value="created">created</option>
                   <option value="title">title</option>
                 </select>
               </label>
             </div>
             {rows.length === 0 && !loading ? (
-              <p className="muted">No tasks yet. Click + New to save your first prompt.</p>
+              <p className="muted">
+                {tag
+                  ? `No tasks tagged ${tag}. Click + New to add one with this tag.`
+                  : "No tasks yet. Click + New to save your first prompt."}
+              </p>
             ) : (
-              <div className="ptasks">
-                {rows.map(task => (
-                  <TaskRow key={task.id} task={task} onOpen={onOpen} />
-                ))}
-              </div>
+              groups.map(([label, group]) => (
+                <section key={label || "all"} className="pgroup">
+                  {label && <h2 className="pgroup-head">{label}</h2>}
+                  <div className="ptasks">
+                    {group.map(task => (
+                      <TaskRow key={task.id} task={task} onOpen={onOpen} />
+                    ))}
+                  </div>
+                </section>
+              ))
             )}
           </main>
         </div>

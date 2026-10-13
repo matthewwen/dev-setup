@@ -3,8 +3,8 @@
 
 Serves /api/list, /api/search, /api/review, /api/prompts, and /api/health on
 127.0.0.1. nginx proxies /__api/ to it, and explorer.html is the browser
-client. Every request stays inside the webroot, following its top-level
-symlinks. Content search uses ripgrep when it is installed. Review comments
+client. Every request stays inside the webroot, following symlinks below it.
+Content search uses ripgrep when it is installed. Review comments
 live in the store that review_store.py describes; the prompt library lives in
 the SQLite database that prompts.py describes. Unlike /api/files, the prompt
 endpoints carry no token: see the design doc's auth decision.
@@ -64,9 +64,13 @@ def allowed_roots():
 def resolve_scope(rel):
     """Map a webroot-relative path to a real directory, or raise ValueError."""
     rel = (rel or "").strip().lstrip("/")
-    target = os.path.realpath(os.path.join(ROOT, rel))
-    if not any(target == r or target.startswith(r + os.sep) for r in allowed_roots()):
+    if ".." in rel.split("/"):
         raise ValueError("scope is outside the webroot")
+    root = os.path.abspath(ROOT)
+    raw = os.path.abspath(os.path.join(root, rel))
+    if raw != root and not raw.startswith(root + os.sep):
+        raise ValueError("scope is outside the webroot")
+    target = os.path.realpath(raw)
     if not os.path.isdir(target):
         raise ValueError("scope is not a directory")
     return rel, target

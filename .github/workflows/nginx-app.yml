@@ -1,0 +1,62 @@
+name: nginx-app
+
+on:
+  pull_request:
+    paths:
+      - nginx/**
+      - .github/workflows/nginx-app.yml
+  push:
+    branches: [main]
+    paths:
+      - nginx/**
+      - .github/workflows/nginx-app.yml
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: nginx
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: nginx/package-lock.json
+      - run: sudo apt-get update && sudo apt-get install -y ripgrep
+      - run: npm ci
+      - run: npm test
+
+  release:
+    needs: test
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: nginx/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - id: pack
+        run: |
+          tag="nginx-app-$(date -u +%Y%m%d)-${GITHUB_SHA::7}"
+          printf '{"tag":"%s","commit":"%s","builtAt":"%s","node":"%s"}\n' \
+            "$tag" "$GITHUB_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(node --version)" > dist/BUILD_INFO.json
+          tar -C dist -czf nginx-app.tar.gz app BUILD_INFO.json
+          sha256sum nginx-app.tar.gz > nginx-app.tar.gz.sha256
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.pack.outputs.tag }}
+        run: |
+          gh release create "$TAG" nginx-app.tar.gz nginx-app.tar.gz.sha256 \
+            --target "$GITHUB_SHA" --title "$TAG" \
+            --notes "nginx viewers app built from ${GITHUB_SHA}."

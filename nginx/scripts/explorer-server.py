@@ -76,14 +76,19 @@ def resolve_scope(rel):
     return rel, target
 
 
-def resolve_file(rel, must_exist=False, follow_links=True):
+def resolve_file(rel, must_exist=False, follow_links=True, allow_nested_links=False):
     """Resolve one webroot-relative file path without allowing an escape."""
     rel = (rel or "").strip().lstrip("/")
     if not rel or "\0" in rel:
         raise ValueError("path is required")
     raw = os.path.abspath(os.path.join(ROOT, rel))
     target = os.path.realpath(raw)
-    if not any(target == root or target.startswith(root + os.sep) for root in allowed_roots()):
+    root = os.path.abspath(ROOT)
+    if allow_nested_links:
+        allowed = ".." not in rel.split("/") and (raw == root or raw.startswith(root + os.sep))
+    else:
+        allowed = any(target == allowed_root or target.startswith(allowed_root + os.sep) for allowed_root in allowed_roots())
+    if not allowed:
         raise ValueError("path is outside the webroot")
     if target == os.path.realpath(ROOT):
         raise ValueError("the webroot itself cannot be changed")
@@ -379,10 +384,11 @@ class Handler(BaseHTTPRequestHandler):
 
     def review_document(self, rel):
         """(store key, lines) for a webroot-relative document path."""
-        target = resolve_file(rel, must_exist=True)
+        key = (rel or "").strip().lstrip("/")
+        target = resolve_file(key, must_exist=True, allow_nested_links=True)
         if not os.path.isfile(target):
             raise ValueError("path is not a file")
-        return review_store.key_for(target, ROOT), review_store.read_document(target)
+        return key, review_store.read_document(target)
 
     # POST /api/review needs no token and accepts any Origin. The handler
     # writes only into the review store: the request names a document to
@@ -419,8 +425,8 @@ class Handler(BaseHTTPRequestHandler):
                 key, lines = self.review_document(get("path"))
                 payload = review_store.document_report(key, lines, "all")
             else:
-                rel_scope, scope_dir = resolve_scope(get("scope"))
-                prefix = review_store.key_for(scope_dir, ROOT) if rel_scope else ""
+                rel_scope, _scope_dir = resolve_scope(get("scope"))
+                prefix = rel_scope
                 payload = review_store.scope_report(prefix, status)
         except (ValueError, FileNotFoundError, OSError) as err:
             self.send_json(400, {"ok": False, "error": str(err)})

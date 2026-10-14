@@ -1,4 +1,4 @@
-source $(dirname $0)/common.sh
+source ${0:h}/common.sh
 
 # ==============================================================================
 # Function to show last 5 directories (or fewer if higher up)

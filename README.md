@@ -49,6 +49,14 @@ export MR_WS="$HOME/workspaces/MyScripts"      # YOUR mono repo — your work sc
 export PATH="$MR_WS/bin/setups:$PATH"          # make your work scripts bare-runnable
 ```
 
+### Startup time
+
+`common.sh` loads once per shell. Put `dev_setup_unload` on the last line of
+`.zshrc` so that `source ~/.zshrc` reloads it.
+
+Use `compinit -C` in `.zshrc` and run `zcompile ~/.zcompdump` once. After you
+install a new completion, run `rm ~/.zcompdump*` and compile again.
+
 ## nginx
 
 This nginx setup gives local agent work a browsable, searchable webroot:

@@ -1,4 +1,10 @@
-autoload -Uz compinit && compinit
+(( ${+_DEV_SETUP_COMMON_LOADED} )) && return
+_DEV_SETUP_COMMON_LOADED=1
+(( $+functions[compdef] )) || { autoload -Uz compinit; compinit -C; }
+
+dev_setup_unload() {
+    unset _DEV_SETUP_COMMON_LOADED
+}
 
 # ============================================================================
 # set DEV_WS, MR_WS, and DEV_SETUP via ~/.zshrc or init caller script
@@ -32,6 +38,14 @@ _common() {
             cd "$target"
         fi
     fi
+}
+
+_common_path() {
+    local target=$1
+    [[ -n "$2" ]] && target=$1/"$2"
+    [[ -d "$target" ]] || return 1
+    [[ -L "$target" ]] && target=${target:A} || target=${target:a}
+    print -r -- "${target}${3:+/$3}"
 }
 
 _devsetuprc_set() {
@@ -80,15 +94,13 @@ _mr_completion() {
 compdef _mr_completion mr
 
 ws_path() {
-    ws "$@"
-    pwd -L
+    _common_path $DEV_WS "$1" "${2:+.claude/worktrees/$2}"
 }
 
 compdef _ws_completion ws_path
 
 mr_path() {
-    mr $1
-    pwd -L
+    _common_path $MR_WS "$1"
 }
 
 compdef _mr_completion mr_path
@@ -516,7 +528,7 @@ compdef _work_complete work-mr
 # own scripts repo, and defaults to this repo. `edit` creates new scripts under
 # DEV_SETUP_HOME, and opens existing scripts from either repo.
 # ==============================================================================
-DEV_SETUP_HOME=$(mr_path)
+DEV_SETUP_HOME=${MR_WS:a}
 if [[ -z ${DEV_SETUP} ]]; then
     DEV_SETUP=$DEV_SETUP_HOME
 fi
@@ -612,7 +624,7 @@ compdef _mdreview_completion mdreview
 
 _register_work_completion() {
     local script=$1
-    local base=$(basename $script)
+    local base=${script:t}
     eval "_${base//-/_}_complete() {
         local funcs=(\$(grep -E '^[a-zA-Z_][a-zA-Z0-9_-]*[[:space:]]*\(\)' "$script" | awk -F'(' '{print \$1}' | grep -v '^_'))
         compadd \$funcs

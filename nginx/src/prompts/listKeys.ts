@@ -273,7 +273,7 @@ export function indentEdit(value: string, start: number, end: number, outdent: b
   return { from: ls, to: le, text, caret: [selStart, selEnd] };
 }
 
-function apply(el: HTMLTextAreaElement, edit: Edit): void {
+export function apply(el: HTMLTextAreaElement, edit: Edit): void {
   el.setSelectionRange(edit.from, edit.to);
   const ok = edit.text === ""
     ? edit.from === edit.to || document.execCommand("delete")

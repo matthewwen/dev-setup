@@ -71,6 +71,7 @@ export function DocOverlay({
   draft,
   onComment,
   onShow,
+  onEdit,
 }: {
   bodyRef: RefObject<HTMLDivElement>;
   hostRef: RefObject<HTMLElement>;
@@ -79,6 +80,7 @@ export function DocOverlay({
   draft: Draft | null;
   onComment: (draft: Draft) => void;
   onShow: (id: string) => void;
+  onEdit?: (block: Block) => void;
 }) {
   const [hover, setHover] = useState<Hover | null>(null);
   const [sel, setSel] = useState<Sel | null>(null);
@@ -128,6 +130,11 @@ export function DocOverlay({
       const body = bodyRef.current;
       const host = hostRef.current;
       if (!s || s.isCollapsed || !s.rangeCount || !body || !host || !body.contains(s.anchorNode)) {
+        setSel(null);
+        return;
+      }
+      const anchor = s.anchorNode instanceof Element ? s.anchorNode : s.anchorNode?.parentElement;
+      if (anchor?.closest(".md-block-edit")) {
         setSel(null);
         return;
       }
@@ -213,6 +220,15 @@ export function DocOverlay({
           >
             +
           </button>
+          {onEdit && (
+            <button
+              className="rv-plus rv-edit"
+              title={`Edit L${block.line}${block.endLine !== block.line ? `-${block.endLine}` : ""}`}
+              onClick={() => onEdit(block)}
+            >
+              &#9998;
+            </button>
+          )}
           {ids && (
             <button className="rv-count" title={`${ids.length} open comment${ids.length > 1 ? "s" : ""}`} onClick={() => onShow(ids[0])}>
               {ids.length}

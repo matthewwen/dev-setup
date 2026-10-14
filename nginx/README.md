@@ -238,6 +238,26 @@ manual theme toggle in `localStorage`.
 - `test/fixtures/markdown-demo.md` exercises every construct. `npm test`
   checks it by assertion; open it through nginx to check an install by eye.
 
+### Edit in the browser
+
+Hover a block and click the pencil next to the `+` in the gutter. The block's
+source opens in a text area in its place; the rest of the page stays rendered.
+`Save` (or `Ctrl+S` / `Cmd+S`) writes the file; `Cancel` (or `Esc`) closes the
+box and asks before it discards a change. Enter continues a list item, Tab and
+Shift+Tab indent it, and Backspace after a marker removes it.
+
+`Edit` in the toolbar opens the whole source instead, with a live preview
+below it and a handle between the two to move the split. Use it for front
+matter or text before the first block, which have no pencil.
+
+- A block save sends `op: patch` with the line range and the text the page
+  rendered. If those lines changed on disk in the meantime, the server answers
+  409 with the current text and keeps the file; the page shows both and offers
+  a reload. A whole-file save sends the file's `sha256` as `if_match` with the
+  same outcome, plus an `Overwrite` choice.
+- Review comments stay in their store. After a save the page re-anchors them
+  to the new text, as it does after an agent edits the file.
+
 ## Review comments
 
 A reviewer comments on a rendered Markdown page in the browser. An agent reads
@@ -419,29 +439,30 @@ The explorer API can create, replace, and remove files under the webroot. The
 installer makes the webroot writable by the installing user and creates
 `~/html -> <webroot>` when that link does not already exist.
 
-Mutations require the per-user token in
-`~/.config/nginx-explorer/edit-token`. The service listens on loopback, but the
-token also prevents a request through nginx from changing files unintentionally.
+The service listens on loopback and takes no token, as `/__api/review` does.
 
 ```bash
-TOKEN="$(<~/.config/nginx-explorer/edit-token)"
-
 # Create or replace a file.
 curl -X POST http://localhost/__api/files \
-  -H "X-Explorer-Token: $TOKEN" -H 'Content-Type: application/json' \
+  -H 'Content-Type: application/json' \
   --data '{"op":"write","path":"hello.html","content":"<h1>Hello</h1>"}'
 
 # Create one directory, or remove a file / empty directory.
 curl -X POST http://localhost/__api/files \
-  -H "X-Explorer-Token: $TOKEN" -H 'Content-Type: application/json' \
+  -H 'Content-Type: application/json' \
   --data '{"op":"mkdir","path":"drafts"}'
 curl -X POST http://localhost/__api/files \
-  -H "X-Explorer-Token: $TOKEN" -H 'Content-Type: application/json' \
+  -H 'Content-Type: application/json' \
   --data '{"op":"delete","path":"drafts"}'
 ```
 
-The API accepts only `write`, `mkdir`, and `delete`; it rejects paths outside
-the webroot, symlinks themselves, and non-empty directory deletes.
+The API accepts only `write`, `patch`, `mkdir`, and `delete`; it rejects paths
+outside the webroot, symlinks themselves, and non-empty directory deletes. A
+`patch` replaces lines `line..endLine` when they still read `expect`, else it
+answers 409 with the `current` text of that range. A `write`
+takes an optional `if_match`: the `sha256` of the content the client read
+(`GET /__api/files?path=...` returns it). When the file on disk differs, the
+server answers 409 with the current hash and leaves the file unchanged.
 
 ### Browsing
 
@@ -530,6 +551,8 @@ without it, browsing and name search still work.
 | `/__api/health` | — | `{ok, root, ripgrep}` |
 | `/__api/list` | `path`, `dirs=1` | one directory level, dirs then files |
 | `/__api/search` | `q`, `mode`, `scope`, `glob`, `regex`, `case` | matches grouped by file |
+| `GET /__api/files` | `path` | `{ok, path, content, sha256, size, mtime}` for one UTF-8 file |
+| `POST /__api/files` | JSON `{op, path, ...}`; `op` is `write`, `patch`, `mkdir`, or `delete` | `{ok, op, path}`; `write` adds `sha256` and takes an optional `if_match`; `patch` takes `{line, endLine, expect, text}` and returns the new `content` |
 | `GET /__api/review` | `path` | the comments on one document, with their current positions |
 | `GET /__api/review` | `scope`, `status` | per-document comment counts under a directory |
 | `POST /__api/review` | JSON `{op, path, ...}`; `op` is `comment`, `reply`, `status`, or `delete` | `{ok, op, id, path}` |

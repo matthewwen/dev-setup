@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Toolbar } from "../shared/Toolbar";
 import { SizeGuard } from "../shared/SizeGuard";
 import { Markdown } from "../markdown/Markdown";
@@ -11,6 +12,8 @@ import { ReviewPanel, revealInPanel, type Draft } from "../review/ReviewPanel";
 import { DocOverlay } from "../review/DocOverlay";
 import { useReview } from "../review/useReview";
 import { blockAt, markedBlocks } from "../review/model";
+import { BlockEditor } from "../edit/BlockEditor";
+import { DocEditor } from "../edit/DocEditor";
 import "./MdViewer.css";
 
 // Rendering a very large document blocks the page, so SizeGuard asks first
@@ -50,10 +53,11 @@ export function MdViewer({ path }: { path: string }) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const scrolledHashRef = useRef(false);
   const [reviewOpen, setReviewOpen] = useState(() => localStorage.getItem("md-comments") === "1");
+  const [editing, setEditing] = useState(false);
   const tocFits = !useMediaQuery(reviewOpen ? NARROW_WITH_REVIEW : NARROW);
 
   const entries = useMemo(() => tocEntries(headings), [headings]);
-  const hasToc = shouldShowToc(entries);
+  const hasToc = shouldShowToc(entries) && !editing;
   const sidebar = hasToc && tocFits && !tocHidden;
   const showToc = sidebar || (hasToc && !tocFits && tocDrawer);
   if (tocFits && tocDrawer) {
@@ -178,12 +182,69 @@ export function MdViewer({ path }: { path: string }) {
     requestAnimationFrame(() => revealInPanel(document.getElementById(`rv-${id}`)));
   };
 
+  const onSaved = (text: string) => {
+    setRaw(text);
+    setEditing(false);
+    void refresh();
+  };
+
+  const startEditing = () => {
+    setEditBlock(null);
+    setEditing(true);
+  };
+
+  // ---------- in-place block edit ----------
+  const [editBlock, setEditBlock] = useState<Block | null>(null);
+  const [slot] = useState(() => document.createElement("div"));
+
+  // The rendered document is one innerHTML string, so the editor renders
+  // through a portal into a slot placed before the block, and the block hides.
+  // A re-render of the document drops the slot; this puts it back or, when
+  // the block is gone, closes the editor.
+  useEffect(() => {
+    const body = bodyRef.current;
+    if (!editBlock || !body) {
+      return;
+    }
+    const el = body.querySelector(`[data-line="${editBlock.line}"]`);
+    if (!(el instanceof HTMLElement)) {
+      const timer = window.setTimeout(() => setEditBlock(null), 0);
+      return () => window.clearTimeout(timer);
+    }
+    el.before(slot);
+    el.classList.add("md-block-hidden");
+    return () => {
+      slot.remove();
+      el.classList.remove("md-block-hidden");
+    };
+  }, [editBlock, raw, slot]);
+
+  const blockSource = editBlock && raw !== null ? raw.split("\n").slice(editBlock.line - 1, editBlock.endLine).join("\n") : "";
+
+  const onBlockSaved = (content: string) => {
+    setRaw(content);
+    setEditBlock(null);
+    void refresh();
+  };
+
+  const onBlockReload = () => {
+    setEditBlock(null);
+    reloadDocument();
+    void refresh();
+  };
+
   return (
     <div className="md-viewer">
       <Toolbar
         path={path}
         actions={
           <>
+            <button className={`btn${editing ? " on" : ""}`} onClick={startEditing} disabled={editing || !loaded} title="Edit the source">
+              Edit
+            </button>
+            <a className="btn" href="/prompts/" title="Saved prompts and model runs">
+              Prompts
+            </a>
             <button className={`btn${reviewOpen ? " on" : ""}`} onClick={() => showReview(!reviewOpen)} title="Toggle comments">
               Comments{openCount ? ` ${openCount}` : ""}
             </button>
@@ -193,7 +254,7 @@ export function MdViewer({ path }: { path: string }) {
           </>
         }
       />
-      <main className={`${sidebar ? "" : "no-toc"}${reviewOpen ? " with-review" : ""}`}>
+      <main className={`${sidebar ? "" : "no-toc"}${reviewOpen ? " with-review" : ""}${editing ? " editing" : ""}`}>
         {showToc && !tocFits && <div className="toc-backdrop" onClick={() => setTocDrawer(false)} />}
         {showToc && (
           <nav id="toc" className={tocFits ? "" : "drawer"}>
@@ -221,13 +282,14 @@ export function MdViewer({ path }: { path: string }) {
               <a href={textViewUrl(path)}>Open the buffered text viewer</a>
             </div>
           )}
-          {!fetchError && (
+          {editing && <DocEditor path={path} onSaved={onSaved} onClose={() => setEditing(false)} />}
+          {!fetchError && !editing && (
             <SizeGuard path={path} limitBytes={BIG_BYTES}>
               <MdLoader path={path} onLoaded={setRaw} onError={setFetchError} />
               {raw === null ? "Loading…" : <Markdown src={raw} onHeadings={setHeadings} onBlocks={setBlocks} sourceLines bodyRef={bodyRef} />}
             </SizeGuard>
           )}
-          {loaded && (
+          {loaded && !editing && (
             <DocOverlay
               bodyRef={bodyRef}
               hostRef={hostRef}
@@ -236,8 +298,23 @@ export function MdViewer({ path }: { path: string }) {
               draft={draft}
               onComment={startDraft}
               onShow={showComment}
+              onEdit={editBlock ? undefined : setEditBlock}
             />
           )}
+          {editBlock &&
+            !editing &&
+            createPortal(
+              <BlockEditor
+                key={editBlock.line}
+                path={path}
+                block={editBlock}
+                source={blockSource}
+                onSaved={onBlockSaved}
+                onClose={() => setEditBlock(null)}
+                onReload={onBlockReload}
+              />,
+              slot,
+            )}
         </article>
         {reviewOpen && (
           <ReviewPanel

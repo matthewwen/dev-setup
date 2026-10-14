@@ -169,8 +169,6 @@ RENDERED=(
   conf/md.conf conf/json.conf conf/ipynb.conf conf/text.conf
   conf/inspect.conf conf/explorer.conf conf/prompts.conf
 )
-EXPLORER_CONFIG_DIR="${XDG_CONFIG_HOME:-${HOME}/.config}/nginx-explorer"
-EXPLORER_TOKEN_FILE="${EXPLORER_CONFIG_DIR}/edit-token"
 # Same XDG default prompts.py's default_db_path() computes, made explicit
 # here so the service and a manual `explorer.sh run` always agree on one
 # database rather than each deriving it independently.
@@ -371,10 +369,6 @@ if [[ ! -e "$HTML_LINK" && ! -L "$HTML_LINK" ]]; then
   ln -s "$WEBROOT" "$HTML_LINK"
   echo "Linked ${HTML_LINK} -> ${WEBROOT}"
 fi
-if [[ ! -f "$EXPLORER_TOKEN_FILE" ]]; then
-  mkdir -p "$EXPLORER_CONFIG_DIR"
-  (umask 077; openssl rand -hex 32 > "$EXPLORER_TOKEN_FILE")
-fi
 [[ -O "$WEBROOT" ]] || priv chown "$(id -u):$(id -g)" "$WEBROOT"
 
 if ((NO_SERVICES)); then
@@ -401,12 +395,11 @@ elif [[ "$NGINX_OS" == macos ]]; then
   mkdir -p "$LAUNCH_DIR" "$(dirname "$LAUNCH_LOG")"
   plist="${LAUNCH_DIR}/${LAUNCH_LABEL}.plist"
   # launchd starts agents with a bare PATH and no shell profile, so the plist
-  # carries the resolved PATH, webroot, and token file.
+  # carries the resolved PATH and webroot.
   sed -e "s|@LABEL@|${LAUNCH_LABEL}|g" \
       -e "s|@BASE_DIR@|${BASE_DIR}|g" \
       -e "s|@WEBROOT@|${WEBROOT}|g" \
       -e "s|@PATH@|${LAUNCH_PATH}|g" \
-      -e "s|@TOKEN_FILE@|${EXPLORER_TOKEN_FILE}|g" \
       -e "s|@PROMPTS_DB@|${PROMPTS_DB}|g" \
       -e "s|@LOG@|${LAUNCH_LOG}|g" \
       "${BASE_DIR}/launchd/nginx-explorer.plist" > "$plist"

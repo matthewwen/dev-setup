@@ -1,19 +1,18 @@
 #!/usr/bin/env python3
 """Browse and search API for the nginx file server.
 
-Serves /api/list, /api/search, /api/review, /api/prompts, and /api/health on
-127.0.0.1. nginx proxies /__api/ to it, and explorer.html is the browser
-client. Every request stays inside the webroot, following symlinks below it.
-Content search uses ripgrep when it is installed. Review comments
+Serves /api/list, /api/search, /api/files, /api/review, /api/prompts, and
+/api/health on 127.0.0.1. nginx proxies /__api/ to it, and explorer.html is
+the browser client. Every request stays inside the webroot, following symlinks
+below it. Content search uses ripgrep when it is installed. Review comments
 live in the store that review_store.py describes; the prompt library lives in
-the SQLite database that prompts.py describes. Unlike /api/files, the prompt
-endpoints carry no token: see the design doc's auth decision.
+the SQLite database that prompts.py describes.
 """
 
 import argparse
 import dataclasses
 import getpass
-import hmac
+import hashlib
 import json
 import os
 import re
@@ -45,7 +44,6 @@ CONTENT_SKIP_GLOBS = ["!*.eval", "!*.zip", "!*.safetensors", "!build/private"]
 
 ROOT = DEFAULT_ROOT
 HAVE_RG = shutil.which("rg") is not None
-EDIT_TOKEN = ""
 PROMPTS_DB = None
 PROMPT_OPS = ("task.create", "task.update", "task.delete", "run.create", "run.update", "run.delete")
 
@@ -99,8 +97,48 @@ def resolve_file(rel, must_exist=False, follow_links=True, allow_nested_links=Fa
     return target
 
 
-def write_file(rel, content):
-    """Atomically create or replace a UTF-8 file inside an allowed webroot."""
+class Conflict(Exception):
+    """The file on disk no longer matches the content the client edited."""
+
+    def __init__(self, **detail):
+        super().__init__("file changed on disk")
+        self.detail = detail
+
+
+def file_sha256(target):
+    with open(target, "rb") as handle:
+        return hashlib.sha256(handle.read()).hexdigest()
+
+
+def read_file(rel):
+    """One UTF-8 file inside an allowed webroot, with the hash a write can match."""
+    target = resolve_file(rel, must_exist=True)
+    if not os.path.isfile(target):
+        raise ValueError("path is not a file")
+    if os.path.getsize(target) > MAX_WRITE_BYTES:
+        raise ValueError("file exceeds the %d MiB limit" % (MAX_WRITE_BYTES // (1024 * 1024)))
+    with open(target, "rb") as handle:
+        data = handle.read()
+    try:
+        content = data.decode("utf-8")
+    except UnicodeDecodeError:
+        raise ValueError("file is not UTF-8 text")
+    st = os.stat(target)
+    return {
+        "path": "/" + os.path.relpath(target, ROOT),
+        "content": content,
+        "sha256": hashlib.sha256(data).hexdigest(),
+        "size": st.st_size,
+        "mtime": st.st_mtime,
+    }
+
+
+def write_file(rel, content, if_match=None):
+    """Atomically create or replace a UTF-8 file inside an allowed webroot.
+
+    With `if_match`, the write only proceeds when the file's current sha256
+    equals it, so an editor never overwrites a change it has not seen.
+    """
     if not isinstance(content, str):
         raise ValueError("content must be a string")
     data = content.encode("utf-8")
@@ -109,6 +147,10 @@ def write_file(rel, content):
     target = resolve_file(rel)
     if os.path.isdir(target):
         raise ValueError("path is a directory")
+    if if_match is not None:
+        current = file_sha256(target) if os.path.isfile(target) else ""
+        if str(if_match) != current:
+            raise Conflict(sha256=current)
     parent = os.path.dirname(target)
     if not os.path.isdir(parent):
         raise ValueError("parent directory does not exist")
@@ -124,6 +166,30 @@ def write_file(rel, content):
             pass
         raise
     return target
+
+
+def patch_file(rel, line, end_line, expect, text):
+    """Replace lines line..end_line (1-based, inclusive) when they still read `expect`.
+
+    Lines split on "\n" alone, on both sides, so the bytes around the range
+    stay exactly as they were.
+    """
+    if not isinstance(expect, str) or not isinstance(text, str):
+        raise ValueError("expect and text must be strings")
+    try:
+        line, end_line = int(line), int(end_line)
+    except (TypeError, ValueError):
+        raise ValueError("line and endLine must be integers")
+    current_doc = read_file(rel)["content"]
+    lines = current_doc.split("\n")
+    if not 1 <= line <= end_line <= len(lines):
+        raise ValueError("line range is outside the file")
+    current = "\n".join(lines[line - 1:end_line])
+    if current != expect:
+        raise Conflict(line=line, endLine=end_line, current=current)
+    lines[line - 1:end_line] = text.split("\n")
+    content = "\n".join(lines)
+    return write_file(rel, content), content
 
 
 def make_directory(rel):
@@ -378,10 +444,6 @@ class Handler(BaseHTTPRequestHandler):
         except json.JSONDecodeError as err:
             raise ValueError("invalid JSON: %s" % err.msg)
 
-    def has_edit_access(self):
-        supplied = self.headers.get("X-Explorer-Token", "")
-        return bool(EDIT_TOKEN) and hmac.compare_digest(supplied, EDIT_TOKEN)
-
     def review_document(self, rel):
         """(store key, lines) for a webroot-relative document path."""
         key = (rel or "").strip().lstrip("/")
@@ -435,10 +497,9 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json(200, payload)
 
     # ------------------------------------------------------------------
-    # Prompt library. No has_edit_access() check anywhere below: see the
-    # design doc's auth decision. Do not add one without also updating that
-    # doc, and do not let this block reuse resolve_file or allowed_roots —
-    # it never touches the filesystem, only prompts.py's own database.
+    # Prompt library. Do not let this block reuse resolve_file or
+    # allowed_roots — it never touches the filesystem, only prompts.py's own
+    # database.
     # ------------------------------------------------------------------
 
     def get_prompt_tasks(self, get):
@@ -585,17 +646,23 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path not in ("/api/files", "/files"):
             self.send_json(404, {"ok": False, "error": "unknown endpoint"})
             return
-        if not self.has_edit_access():
-            self.send_json(403, {"ok": False, "error": "edit access denied"})
-            return
         try:
             payload = self.read_json()
             if not isinstance(payload, dict):
                 raise ValueError("JSON body must be an object")
-            operation = payload.get("op")
+        except ValueError as err:
+            self.send_json(400, {"ok": False, "error": str(err)})
+            return
+        operation = payload.get("op")
+        try:
             path = payload.get("path")
             if operation == "write":
-                target = write_file(path, payload.get("content"))
+                target = write_file(path, payload.get("content"), payload.get("if_match"))
+                content = payload["content"]
+                code = 200
+            elif operation == "patch":
+                target, content = patch_file(path, payload.get("line"), payload.get("endLine"),
+                                             payload.get("expect"), payload.get("text"))
                 code = 200
             elif operation == "mkdir":
                 target = make_directory(path)
@@ -604,11 +671,20 @@ class Handler(BaseHTTPRequestHandler):
                 target = delete_path(path)
                 code = 200
             else:
-                raise ValueError("op must be write, mkdir, or delete")
+                raise ValueError("op must be write, patch, mkdir, or delete")
+        except Conflict as err:
+            self.send_json(409, {"ok": False, "error": str(err), **err.detail})
+            return
         except (ValueError, FileNotFoundError, OSError) as err:
             self.send_json(400, {"ok": False, "error": str(err)})
             return
-        self.send_json(code, {"ok": True, "op": operation, "path": "/" + os.path.relpath(target, ROOT)})
+        result = {"ok": True, "op": operation, "path": "/" + os.path.relpath(target, ROOT)}
+        if operation == "write":
+            result["sha256"] = hashlib.sha256(content.encode("utf-8")).hexdigest()
+        elif operation == "patch":
+            result["sha256"] = hashlib.sha256(content.encode("utf-8")).hexdigest()
+            result["content"] = content
+        self.send_json(code, result)
 
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
@@ -617,12 +693,23 @@ class Handler(BaseHTTPRequestHandler):
 
         if parsed.path in ("/api/health", "/health"):
             self.send_json(200, {"ok": True, "root": ROOT, "ripgrep": HAVE_RG,
-                                 "edit_enabled": bool(EDIT_TOKEN),
                                  "prompts": True, "prompts_db": PROMPTS_DB})
             return
 
         if parsed.path in ("/api/review", "/review"):
             self.get_review(get)
+            return
+
+        # Reading needs no token: nginx already serves every file under the
+        # webroot. The hash lets a later write detect a concurrent change.
+        if parsed.path in ("/api/files", "/files"):
+            try:
+                payload = read_file(get("path"))
+            except (ValueError, FileNotFoundError, OSError) as err:
+                self.send_json(400, {"ok": False, "error": str(err)})
+                return
+            payload["ok"] = True
+            self.send_json(200, payload)
             return
 
         if parsed.path in ("/api/prompts/tasks", "/prompts/tasks"):
@@ -715,13 +802,11 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    global ROOT, EDIT_TOKEN, PROMPTS_DB
+    global ROOT, PROMPTS_DB
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", default=DEFAULT_ROOT, help="webroot to search")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--edit-token-file", default=os.environ.get("EXPLORER_EDIT_TOKEN_FILE"),
-                        help="file containing the token required for POST /api/files")
     parser.add_argument("--prompts-db", default=os.environ.get("PROMPTS_DB"),
                         help="sqlite database for the prompt library (default: XDG data dir)")
     opts = parser.parse_args()
@@ -731,14 +816,6 @@ def main():
     ROOT = os.path.abspath(opts.root)
     if not os.path.isdir(ROOT):
         sys.exit("No such webroot: %s" % ROOT)
-    if opts.edit_token_file:
-        try:
-            with open(opts.edit_token_file, encoding="utf-8") as handle:
-                EDIT_TOKEN = handle.read().strip()
-        except OSError as err:
-            sys.exit("Unable to read edit token: %s" % err)
-        if not EDIT_TOKEN:
-            sys.exit("Edit token file is empty: %s" % opts.edit_token_file)
 
     engine = "ripgrep" if HAVE_RG else "python walk (names only)"
     print("Explorer API on http://%s:%d  root=%s  engine=%s" % (opts.host, opts.port, ROOT, engine))

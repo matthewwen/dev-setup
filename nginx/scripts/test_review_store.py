@@ -411,7 +411,7 @@ class ApiTest(StoreCase):
             _code, response_headers, _payload = self.request(method, path, body, headers)
             self.assertFalse(any(name.lower().startswith("access-control-") for name in response_headers), path)
 
-    def test_bad_requests_are_400_and_files_still_needs_a_token(self):
+    def test_bad_requests_are_400(self):
         code, _headers, payload = self.request("POST", "/api/review", {"op": "comment", "path": "/../etc/passwd", "body": "x"}, self.JSON)
         self.assertEqual((code, payload["ok"]), (400, False))
         code, _headers, payload = self.request("POST", "/api/review", {"op": "comment", "path": "/proj/docs/nope.md", "body": "x"}, self.JSON)
@@ -424,10 +424,6 @@ class ApiTest(StoreCase):
         code, _headers, payload = self.request("POST", "/api/review", {"op": "comment", "path": "/proj/docs/notes.md", "body": "x" * 70000}, self.JSON)
         self.assertEqual(code, 400)
         self.assertIn("KiB", payload["error"])
-        code, _headers, payload = self.request("POST", "/api/files", {"op": "write", "path": "/proj/docs/notes.md", "content": "gone"}, self.JSON)
-        self.assertEqual(code, 403)
-        with open(self.doc, encoding="utf-8") as handle:
-            self.assertEqual(handle.read(), DOC)
 
 
 if __name__ == "__main__":

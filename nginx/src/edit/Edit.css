@@ -1,0 +1,62 @@
+/* In-place block editor. The rendered block is hidden and this box takes its
+ * place in the document flow, so the rest of the page does not move. */
+.markdown-body .md-block-hidden { display: none; }
+
+.md-block-edit {
+  margin: 0 0 16px; padding: 8px;
+  background: var(--bg-soft); border: 1px solid var(--link); border-radius: 8px;
+  box-shadow: 0 0 0 1px var(--link);
+}
+.md-block-source {
+  display: block; width: 100%; padding: 8px 10px; resize: none; overflow: hidden; tab-size: 2;
+  font-family: var(--mono); font-size: 13px; line-height: 1.6;
+  color: var(--fg); background: var(--bg);
+  border: 1px solid var(--border); border-radius: 6px;
+}
+.md-block-source:focus { outline: none; border-color: var(--link); }
+.md-block-bar { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.md-block-range { font-family: var(--mono); font-size: 11px; color: var(--fg-muted); }
+.md-block-hint { font-size: 11px; color: var(--fg-muted); }
+.md-block-error { margin-top: 8px; font-size: 12px; color: var(--del); }
+.md-block-current {
+  margin: 6px 0 0; padding: 6px 8px; max-height: 160px; overflow: auto;
+  font-family: var(--mono); font-size: 12px; color: var(--fg);
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+}
+
+.rv-gutter .rv-edit { font-size: 12px; }
+.rv-edit:hover { color: #fff; background: var(--link); border-color: var(--link); }
+@media print {
+  .md-block-edit { display: none; }
+  .markdown-body .md-block-hidden { display: revert; }
+}
+
+/* Whole-file editor: fills the viewport under the toolbar, source above a
+ * live preview. The page itself does not scroll; each pane keeps a stable
+ * scrollbar gutter, so a scrollbar that appears while typing moves nothing. */
+.md-viewer main.editing {
+  height: calc(100vh - 52px); max-width: 1240px; padding: 12px 20px; overflow: hidden;
+}
+.md-viewer main.editing article { display: flex; flex-direction: column; min-height: 0; max-width: none; }
+.md-doc-edit { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.md-doc-bar { display: flex; align-items: center; gap: 8px; padding-bottom: 10px; }
+.md-doc-status { flex: 1 1 auto; font-size: 12px; color: var(--fg-muted); }
+.md-doc-panes { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.md-doc-source {
+  flex: 1 1 0; min-height: 0; padding: 10px 12px; resize: none; tab-size: 2;
+  font-family: var(--mono); font-size: 13px; line-height: 1.6;
+  color: var(--fg); background: var(--bg-soft);
+  border: 1px solid var(--border); border-radius: 8px;
+  overflow: auto; scrollbar-gutter: stable;
+}
+.md-doc-source:focus { outline: none; border-color: var(--link); box-shadow: 0 0 0 1px var(--link); }
+.md-doc-handle {
+  flex: 0 0 14px; margin: 0 auto; width: 100%; cursor: row-resize;
+  background: linear-gradient(var(--border), var(--border)) center / 48px 3px no-repeat;
+  border-radius: 3px;
+}
+.md-doc-handle:hover { background-image: linear-gradient(var(--link), var(--link)); }
+.md-doc-preview {
+  flex: 1 1 0; min-height: 0; padding: 0 12px; overflow-y: auto; scrollbar-gutter: stable;
+  border: 1px solid var(--border); border-radius: 8px;
+}

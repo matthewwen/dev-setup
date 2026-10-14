@@ -66,7 +66,8 @@ repo's `work-example` into `$MR_WS/bin/setups/` and customize it (see below).
 ## What common.sh provides
 
 **Navigation** (zsh tab-completion wired via `compdef`):
-- `ws [pkg]` — cd to `$DEV_WS/<pkg>` (follows symlinks to the real checkout).
+- `ws [pkg] [wt]` — cd to `$DEV_WS/<pkg>` (follows symlinks to the real checkout).
+  If `wt` is set, cd to `<pkg>/.claude/worktrees/<wt>`. The second argument tab-completes worktree names.
 - `mr [dir]` — cd to `$MR_WS/<dir>`.
 - `_common` is the shared impl; `mr_path <dir>` echoes the resolved path.
 
@@ -109,7 +110,7 @@ repo's `work-example` into `$MR_WS/bin/setups/` and customize it (see below).
   creates it in `$DEV_SETUP_HOME/bin/setups/` from a template and `chmod +x` it.
   `$DEV_SETUP_HOME` is this repo, auto-detected from the path of `common.sh`, and
   `common.sh` appends its `bin/setups` to `PATH` so new scripts run immediately.
-- `ws_path [pkg]` / `mr_path [dir]` — like `ws`/`mr` but *echo* the resolved
+- `ws_path [pkg] [wt]` / `mr_path [dir]` — like `ws`/`mr` but *echo* the resolved
   path instead of cd'ing (for `$(ws_path pkg)` command substitution).
 
 **Auto-completion for `work-*` scripts:** on source, `common.sh` loops over

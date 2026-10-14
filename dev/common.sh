@@ -53,11 +53,18 @@ _common_completion() {
 }
 
 ws() {
-    _common $DEV_WS "$@"
+    _common $DEV_WS "$1" || return
+    [[ -z "$2" ]] || cd "$PWD/.claude/worktrees/$2"
 }
 
 _ws_completion() {
-    _common_completion $DEV_WS
+    if (( CURRENT == 2 )); then
+        _common_completion $DEV_WS
+    elif (( CURRENT == 3 )); then
+        local -a wts
+        wts=($DEV_WS/${words[2]}/.claude/worktrees/*(-/N:t))
+        _describe 'worktrees' wts
+    fi
 }
 
 compdef _ws_completion ws
@@ -73,7 +80,7 @@ _mr_completion() {
 compdef _mr_completion mr
 
 ws_path() {
-    ws $1
+    ws "$@"
     pwd -L
 }
 

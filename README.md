@@ -84,7 +84,7 @@ the tmux-style keybindings in `herdr/config.toml` with:
 
 | Command | Description |
 |---------|-------------|
-| `ws [dir]` | cd into a package under `DEV_WS` (tab-complete) |
+| `ws [dir] [worktree]` | cd into a package under `DEV_WS`, or into its `.claude/worktrees/<worktree>` (tab-complete) |
 | `mr [dir]` | cd into a directory under `MR_WS` (directories only, tab-complete) |
 | `sync_command <host> [dest]` | rsync current directory to a remote SSH host |
 | `start_tmux_session <name> <cmd>` | create/replace a tmux session running a command |

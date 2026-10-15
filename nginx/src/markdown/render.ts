@@ -111,12 +111,12 @@ export function renderMarkdown(src: string, sharedSlugs?: Map<string, number>, o
     return n ? `${s}-${n}` : s;
   }
 
-  function list(lines: string[], start: number): [string, number] {
+  function list(lines: string[], start: number, offset: number): [string, number] {
     const first = lines[start].match(RE_ITEM)!;
     const baseIndent = first[1].length;
     const ordered = /\d/.test(first[2]);
     const startNo = ordered ? parseInt(first[2], 10) : 1;
-    const items: { content: string[]; pad: number }[] = [];
+    const items: { content: string[]; pad: number; line: number }[] = [];
     let i = start;
     let loose = false;
 
@@ -130,7 +130,7 @@ export function renderMarkdown(src: string, sharedSlugs?: Map<string, number>, o
         if (ordered !== /\d/.test(m[2])) {
           break;
         }
-        items.push({ content: [m[4]], pad: m[1].length + m[2].length + m[3].length });
+        items.push({ content: [m[4]], pad: m[1].length + m[2].length + m[3].length, line: i + offset + 1 });
         i++;
         continue;
       }
@@ -164,13 +164,14 @@ export function renderMarkdown(src: string, sharedSlugs?: Map<string, number>, o
 
     const body = items
       .map(it => {
-        let inner = blocks(it.content);
+        let inner = blocks(it.content, undefined, it.line - 1);
         let cls = "";
         const task = it.content[0].match(/^\[([ xX])\]\s+/);
         if (task) {
           cls = ' class="task"';
           inner = inner.replace(/^<p>\[[ xX]\]\s*/, "<p>");
-          inner = inner.replace("<p>", `<p><input type="checkbox" disabled${task[1] === " " ? "" : " checked"}>`);
+          const state = opts.sourceLines ? ` data-task="${it.line}"` : " disabled";
+          inner = inner.replace("<p>", `<p><input type="checkbox"${state}${task[1] === " " ? "" : " checked"}>`);
         }
         if (!loose) {
           inner = inner.replace(/^<p>([\s\S]*?)<\/p>$/, "$1").replace(/^<p>([\s\S]*?)<\/p>\n/, "$1\n");
@@ -186,7 +187,7 @@ export function renderMarkdown(src: string, sharedSlugs?: Map<string, number>, o
 
   // One top-level block per call: the branch that matches consumes its lines,
   // pushes exactly one HTML string, and returns the index of the next line.
-  function step(lines: string[], i: number, out: string[]): number {
+  function step(lines: string[], i: number, out: string[], offset: number): number {
     const line = lines[i];
     let m = line.match(RE_FENCE);
     if (m) {
@@ -246,15 +247,16 @@ export function renderMarkdown(src: string, sharedSlugs?: Map<string, number>, o
 
     if (/^ {0,3}>/.test(line)) {
       const buf: string[] = [];
+      const from = i;
       while (i < lines.length && (/^ {0,3}>/.test(lines[i]) || (buf.length && lines[i].trim()))) {
         buf.push(lines[i++].replace(/^ {0,3}>\s?/, ""));
       }
-      out.push(`<blockquote>${blocks(buf)}</blockquote>`);
+      out.push(`<blockquote>${blocks(buf, undefined, from + offset)}</blockquote>`);
       return i;
     }
 
     if (RE_ITEM.test(line)) {
-      const [html, next] = list(lines, i);
+      const [html, next] = list(lines, i, offset);
       out.push(html);
       i = next;
       return i;
@@ -295,7 +297,7 @@ export function renderMarkdown(src: string, sharedSlugs?: Map<string, number>, o
         continue;
       }
       const start = i;
-      i = step(lines, i, out);
+      i = step(lines, i, out, offset);
       if (!spans) {
         continue;
       }

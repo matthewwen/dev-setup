@@ -53,6 +53,7 @@
 .rv-card.active { border-color: var(--link); box-shadow: 0 0 0 1px var(--link); }
 .rv-card.resolved { opacity: .82; }
 .rv-meta { display: flex; align-items: baseline; gap: 6px; cursor: pointer; }
+.rv-card > .rv-quote { cursor: pointer; }
 .rv-reply .rv-meta { cursor: default; }
 .rv-pencil {
   padding: 0 2px; border: 0; background: none; cursor: pointer;

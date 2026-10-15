@@ -22,7 +22,7 @@ interface Sel {
 const highlights = typeof CSS !== "undefined" && "highlights" in CSS && typeof Highlight !== "undefined" ? CSS.highlights : null;
 
 // Selection.toString() adds whitespace between cells and items that the text nodes do not hold.
-function findRange(el: Element, text: string): Range | null {
+export function findRange(el: Element, text: string): Range | null {
   const words = text.trim().split(/\s+/);
   if (!words[0]) {
     return null;
@@ -56,7 +56,7 @@ function findRange(el: Element, text: string): Range | null {
   return range;
 }
 
-function holderOf(block: Element, range: Range): Element {
+export function holderOf(block: Element, range: Range): Element {
   const node = range.commonAncestorContainer;
   const from = node instanceof Element ? node : node.parentElement;
   const holder = from?.closest("li") ?? from?.closest("tr, p, h1, h2, h3, h4, h5, h6, dt, dd");

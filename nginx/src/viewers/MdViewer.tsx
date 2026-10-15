@@ -9,11 +9,12 @@ import { fetchRaw, textViewUrl } from "../shared/fetch";
 import { useMediaQuery } from "../shared/media";
 import type { ReviewComment } from "../shared/review-api";
 import { ReviewPanel, revealInPanel, type Draft } from "../review/ReviewPanel";
-import { DocOverlay } from "../review/DocOverlay";
+import { DocOverlay, findRange, holderOf } from "../review/DocOverlay";
 import { useReview } from "../review/useReview";
 import { blockAt, markedBlocks } from "../review/model";
 import { BlockEditor } from "../edit/BlockEditor";
 import { DocEditor } from "../edit/DocEditor";
+import { useTaskToggle } from "../edit/useTaskToggle";
 import "./MdViewer.css";
 
 // Rendering a very large document blocks the page, so SizeGuard asks first
@@ -165,7 +166,12 @@ export function MdViewer({ path }: { path: string }) {
     setActiveComment(c.id);
     const line = c.resolved.line;
     const block = line === undefined ? undefined : blockAt(blocks, line);
-    const el = block && bodyRef.current?.querySelector(`[data-line="${block.line}"]`);
+    const blockEl = block && bodyRef.current?.querySelector(`[data-line="${block.line}"]`);
+    if (!(blockEl instanceof HTMLElement)) {
+      return;
+    }
+    const range = c.anchor.selection ? findRange(blockEl, c.anchor.selection) : null;
+    const el = range ? holderOf(blockEl, range) : blockEl;
     if (!(el instanceof HTMLElement)) {
       return;
     }
@@ -232,6 +238,8 @@ export function MdViewer({ path }: { path: string }) {
     reloadDocument();
     void refresh();
   };
+
+  useTaskToggle(bodyRef, path, raw ?? "", onBlockSaved, onBlockReload);
 
   return (
     <div className="md-viewer">

@@ -72,8 +72,17 @@ test("top-level blocks carry 1-based line ranges against the raw file", () => {
 
 test("source line attributes are opt-in and change nothing else", () => {
   assert.ok(!html.includes("data-line"));
-  assert.equal(traced.html.replace(/ data-line="\d+" data-end="\d+"/g, ""), html);
+  assert.ok(!html.includes("data-task"));
+  const plain = traced.html.replace(/ data-line="\d+" data-end="\d+"/g, "").replace(/ data-task="\d+"/g, " disabled");
+  assert.equal(plain, html);
   assert.deepEqual(renderMarkdown(fixture).blocks, traced.blocks);
+});
+
+test("a nested task item carries its absolute source line", () => {
+  const src = "---\nt: 1\n---\n\n- a\n\n  - [ ] nested\n- > - [x] quoted\n";
+  const out = renderMarkdown(src, undefined, { sourceLines: true }).html;
+  assert.ok(out.includes('<li class="task"><input type="checkbox" data-task="7">nested</li>'), out);
+  assert.ok(out.includes('<li class="task"><input type="checkbox" data-task="8" checked>quoted</li>'), out);
 });
 
 test("a document without front matter starts at line 1", () => {

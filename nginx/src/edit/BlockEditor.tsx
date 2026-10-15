@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Block } from "../markdown/render";
 import { apiPatchFile } from "../shared/files-api";
 import { onMarkdownKeyDown } from "./keys";
+import { readSpell } from "./spell";
 import "./Edit.css";
 
 interface SaveError {
@@ -118,7 +119,7 @@ export function BlockEditor({
         ref={areaRef}
         className="md-block-source"
         value={text}
-        spellCheck={false}
+        spellCheck={readSpell()}
         disabled={busy}
         onChange={e => setText(e.target.value)}
         onKeyDown={onMarkdownKeyDown(() => void save(), cancel)}

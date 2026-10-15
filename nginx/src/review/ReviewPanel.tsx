@@ -223,14 +223,18 @@ function Card({ c, review, active, onPick }: { c: ReviewComment; review: ReviewS
         <span className="rv-grow" />
         {lineLabel(c) && <span className="rv-line">{lineLabel(c)}</span>}
         {(conf === "moved" || conf === "quote") && (
-          <span className={`rv-badge ${conf}`} title={conf === "moved" ? "The block moved since the comment" : "The block changed; matched by its text"}>
+          <span className={`rv-badge ${conf}`} title={conf === "moved" ? "Lines changed above; the comment follows its block" : "The block changed; matched by its text"}>
             {conf}
           </span>
         )}
         {resolved && c.action && <span className={`rv-badge ${c.action}`}>{ACTION_LABELS[c.action]}</span>}
         {mode === "idle" && <Pencil onClick={() => edit(null)} />}
       </div>
-      {quote && <blockquote className="rv-quote">{excerpt(quote, 200)}</blockquote>}
+      {quote && (
+        <blockquote className="rv-quote" onClick={() => onPick(c)}>
+          {excerpt(quote, 200)}
+        </blockquote>
+      )}
       {mode === "edit" && editing === null ? (
         <Editor initial={c.body} busy={busy} onSave={save} onCancel={() => setMode("idle")} />
       ) : (

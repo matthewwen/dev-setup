@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { Markdown } from "../markdown/Markdown";
 import { apiReadFile, apiWriteFile, type FileOk } from "../shared/files-api";
 import { onMarkdownKeyDown } from "./keys";
+import { readSpell, writeSpell } from "./spell";
 import "./Edit.css";
 
 const PREVIEW_DELAY_MS = 300;
@@ -31,6 +32,7 @@ export function DocEditor({ path, onSaved, onClose }: { path: string; onSaved: (
   const [preview, setPreview] = useState(() => localStorage.getItem("md-edit-preview") !== "0");
   const [previewSrc, setPreviewSrc] = useState("");
   const [split, setSplit] = useState(readSplit);
+  const [spell, setSpell] = useState(readSpell);
   const areaRef = useRef<HTMLTextAreaElement>(null);
   const panesRef = useRef<HTMLDivElement>(null);
 
@@ -137,6 +139,13 @@ export function DocEditor({ path, onSaved, onClose }: { path: string; onSaved: (
     });
   };
 
+  const toggleSpell = () => {
+    setSpell(on => {
+      writeSpell(!on);
+      return !on;
+    });
+  };
+
   const startDrag = (e: PointerEvent<HTMLDivElement>) => {
     const panes = panesRef.current;
     if (!panes) {
@@ -169,6 +178,9 @@ export function DocEditor({ path, onSaved, onClose }: { path: string; onSaved: (
         <span className="md-block-hint">
           <kbd>Esc</kbd> cancel · <kbd>⌘S</kbd> save
         </span>
+        <button className={`btn${spell ? " on" : ""}`} onClick={toggleSpell} title="Toggle spell check">
+          Spell
+        </button>
         <button className={`btn${preview ? " on" : ""}`} onClick={togglePreview} title="Toggle live preview">
           Preview
         </button>
@@ -202,7 +214,7 @@ export function DocEditor({ path, onSaved, onClose }: { path: string; onSaved: (
           className="md-doc-source"
           style={preview ? { flex: `0 0 ${split}%` } : undefined}
           value={text}
-          spellCheck={false}
+          spellCheck={spell}
           disabled={base === null}
           onChange={e => setText(e.target.value)}
           onKeyDown={onMarkdownKeyDown(() => void save(), cancel)}

@@ -18,6 +18,7 @@
 .markdown-body li > ul, .markdown-body li > ol { margin: 4px 0; }
 .markdown-body li.task { list-style: none; margin-left: -20px; }
 .markdown-body li.task input { margin-right: 8px; }
+.markdown-body li.task input[data-task] { cursor: pointer; }
 .markdown-body hr { height: 1px; margin: 28px 0; border: 0; background: var(--border); }
 .markdown-body blockquote {
   margin: 0 0 16px; padding: 2px 16px;

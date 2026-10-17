@@ -22,14 +22,16 @@ allowed-tools: Read Glob Grep
 
 ### Commits
 
-- Subject: a general overview of the change. Imperative. At most 60 characters.
-  The `type(scope):` prefix is optional.
+- Every commit subject must use `type(scope): description`. Both type and scope
+  are required. Use lowercase throughout the subject.
+- The description must give a general overview of the change in the imperative.
+  Keep the entire subject, including the prefix, at most 60 characters.
 - Prefer an overview with up to 3 bullet points summarizing the main changes,
   or use the overview alone when it captures the change clearly.
 - Do not list every changed file or function. The diff shows that.
 - Good:
   ```text
-  Improve prompt copying and Markdown checkboxes
+  fix(viewer): improve prompt copying and markdown checkboxes
 
   - Keep editor wrapping out of copied prompts
   - Render standalone and empty Markdown checkboxes
@@ -151,3 +153,7 @@ Ask when the user gives no path. Defaults when the user says "default":
 
 In a worktree, `.claude/handoffs` is a symlink to the main checkout. Write
 there. Do not copy the file.
+
+For each handoff created or updated, follow
+[md-handoffs](../md-handoffs/SKILL.md) to run `html_link` into the viewer's
+`docs/` folder. Move its viewer link to `docs/old/` when archiving the handoff.

@@ -31,7 +31,8 @@ export function useTaskToggle(
       }
       const n = Number(el.dataset.task);
       const expect = state.current.raw.split("\n")[n - 1];
-      const text = expect === undefined ? null : toggleTaskLine(expect);
+      const column = el.dataset.taskCell === undefined ? undefined : Number(el.dataset.taskCell);
+      const text = expect === undefined ? null : toggleTaskLine(expect, column);
       if (text === null) {
         state.current.onConflict();
         return;

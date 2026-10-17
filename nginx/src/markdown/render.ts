@@ -42,6 +42,8 @@ const RE_FENCE = /^(\s*)(`{3,}|~{3,})\s*([\w+#.-]*)/;
 const RE_HEAD = /^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$/;
 const RE_HR = /^ {0,3}([-*_])(?:\s*\1){2,}\s*$/;
 const RE_ITEM = /^(\s*)([-+*]|\d{1,9}[.)])(\s+)(.*)$/;
+const RE_TASK = /^\[([ xX])\](?:[ \t]+|$)/;
+const RE_STANDALONE_TASK = /^ {0,3}\[([ xX])\](?:[ \t]+|$)/;
 const RE_TROW = /^\s*\|?(?:[^|\n]*\|)+[^|\n]*\|?\s*$/;
 const RE_TSEP = /^\s*\|?(?:\s*:?-{1,}:?\s*\|)+\s*:?-{0,}:?\s*\|?\s*$/;
 
@@ -49,7 +51,7 @@ function cells(line: string): string[] {
   return line.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map(c => c.trim());
 }
 
-function table(lines: string[], start: number): [string, number] {
+function table(lines: string[], start: number, renderCell: (text: string, line: number, column: number) => string): [string, number] {
   const head = cells(lines[start]);
   const align = cells(lines[start + 1]).map(s => (/^:-+:$/.test(s) ? "center" : /-+:$/.test(s) ? "right" : /^:-+/.test(s) ? "left" : ""));
   let i = start + 2;
@@ -58,8 +60,8 @@ function table(lines: string[], start: number): [string, number] {
     rows.push(cells(lines[i++]));
   }
   const sty = (j: number) => (align[j] ? ` style="text-align:${align[j]}"` : "");
-  const thead = `<tr>${head.map((c, j) => `<th${sty(j)}>${inline(c)}</th>`).join("")}</tr>`;
-  const tbody = rows.map(r => `<tr>${head.map((_, j) => `<td${sty(j)}>${inline(r[j] || "")}</td>`).join("")}</tr>`).join("\n");
+  const thead = `<tr>${head.map((c, j) => `<th${sty(j)}>${renderCell(c, start, j)}</th>`).join("")}</tr>`;
+  const tbody = rows.map((r, row) => `<tr>${head.map((_, j) => `<td${sty(j)}>${renderCell(r[j] || "", start + 2 + row, j)}</td>`).join("")}</tr>`).join("\n");
   return [`<table><thead>${thead}</thead><tbody>${tbody}</tbody></table>`, i];
 }
 
@@ -109,6 +111,12 @@ export function renderMarkdown(src: string, sharedSlugs?: Map<string, number>, o
     const n = slugs.get(s) || 0;
     slugs.set(s, n + 1);
     return n ? `${s}-${n}` : s;
+  }
+
+  function checkbox(mark: string, line: number, column?: number): string {
+    const cell = column === undefined ? "" : ` data-task-cell="${column}"`;
+    const state = opts.sourceLines ? ` data-task="${line}"${cell}` : " disabled";
+    return `<input type="checkbox"${state}${mark === " " ? "" : " checked"}>`;
   }
 
   function list(lines: string[], start: number, offset: number): [string, number] {
@@ -164,14 +172,14 @@ export function renderMarkdown(src: string, sharedSlugs?: Map<string, number>, o
 
     const body = items
       .map(it => {
-        let inner = blocks(it.content, undefined, it.line - 1);
+        const task = it.content[0].match(RE_TASK);
+        const content = task ? [it.content[0].slice(task[0].length), ...it.content.slice(1)] : it.content;
+        let inner = blocks(content, undefined, it.line - 1);
         let cls = "";
-        const task = it.content[0].match(/^\[([ xX])\]\s+/);
         if (task) {
           cls = ' class="task"';
-          inner = inner.replace(/^<p>\[[ xX]\]\s*/, "<p>");
-          const state = opts.sourceLines ? ` data-task="${it.line}"` : " disabled";
-          inner = inner.replace("<p>", `<p><input type="checkbox"${state}${task[1] === " " ? "" : " checked"}>`);
+          const input = checkbox(task[1], it.line);
+          inner = inner.startsWith("<p>") ? inner.replace("<p>", `<p>${input}`) : `<p>${input}</p>${inner}`;
         }
         if (!loose) {
           inner = inner.replace(/^<p>([\s\S]*?)<\/p>$/, "$1").replace(/^<p>([\s\S]*?)<\/p>\n/, "$1\n");
@@ -263,10 +271,18 @@ export function renderMarkdown(src: string, sharedSlugs?: Map<string, number>, o
     }
 
     if (line.includes("|") && RE_TROW.test(line) && i + 1 < lines.length && RE_TSEP.test(lines[i + 1])) {
-      const [html, next] = table(lines, i);
+      const [html, next] = table(lines, i, (text, row, column) => {
+        const task = text.match(RE_TASK);
+        return task ? checkbox(task[1], row + offset + 1, column) + inline(text.slice(task[0].length)) : inline(text);
+      });
       out.push(html);
       i = next;
       return i;
+    }
+
+    if ((m = line.match(RE_STANDALONE_TASK))) {
+      out.push(`<p class="task">${checkbox(m[1], i + offset + 1)}${inline(line.slice(m[0].length))}</p>`);
+      return i + 1;
     }
 
     const buf: string[] = [];
@@ -276,6 +292,7 @@ export function renderMarkdown(src: string, sharedSlugs?: Map<string, number>, o
       !RE_HEAD.test(lines[i]) &&
       !RE_HR.test(lines[i]) &&
       !RE_FENCE.test(lines[i]) &&
+      !RE_STANDALONE_TASK.test(lines[i]) &&
       !/^ {0,3}>/.test(lines[i]) &&
       !RE_ITEM.test(lines[i])
     ) {

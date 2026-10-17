@@ -169,6 +169,22 @@ function continuationIndent(value: string, ls: number, line: string): string | n
   return owningItem(value, ls, line) ? /^[ \t]*/.exec(line)![0] : null;
 }
 
+export function copyPromptText(value: string): string {
+  const out: string[] = [];
+  let offset = 0;
+  for (const line of value.split("\n")) {
+    const owner = listItem(line) ? null : owningItem(value, offset, line);
+    const indent = owner ? itemIndent(owner) : "";
+    if (owner && line.trim() && /^[ \t]*/.exec(line)![0] === indent && out.at(-1)?.trim()) {
+      out[out.length - 1] += " " + line.slice(indent.length);
+    } else {
+      out.push(line);
+    }
+    offset += line.length + 1;
+  }
+  return out.join("\n");
+}
+
 export function softBreakEdit(value: string, start: number, end: number): Edit | null {
   const ls = lineStart(value, start);
   const indent = continuationIndent(value, ls, value.slice(ls, lineEnd(value, start)));

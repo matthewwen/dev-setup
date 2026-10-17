@@ -46,6 +46,33 @@ test("task list items render as disabled checkboxes", () => {
   assert.ok(html.includes('<li class="task"><input type="checkbox" disabled checked>checked</li>'));
 });
 
+test("task markers without trailing text render checkboxes", () => {
+  const out = renderMarkdown("- [ ]\n- [x]\n- [X]\n").html;
+  assert.equal(out, '<ul>\n<li class="task"><input type="checkbox" disabled></li>\n<li class="task"><input type="checkbox" disabled checked></li>\n<li class="task"><input type="checkbox" disabled checked></li>\n</ul>');
+});
+
+test("standalone checkboxes keep source lines and leave code markers literal", () => {
+  const src = "Intro\n[ ] todo\n[X]\n\n`[ ] literal`\n\n```\n[ ] literal\n```";
+  const out = renderMarkdown(src, undefined, { sourceLines: true }).html;
+  assert.ok(out.includes('<p data-line="2" data-end="2" class="task"><input type="checkbox" data-task="2">todo</p>'), out);
+  assert.ok(out.includes('<input type="checkbox" data-task="3" checked>'), out);
+  assert.equal((out.match(/type="checkbox"/g) ?? []).length, 2);
+  assert.ok(out.includes('<code>[ ] literal</code>'), out);
+});
+
+test("table checkboxes identify their source row and column and keep code literal", () => {
+  const src = "---\ntitle: Status\n---\n\n| Tried | Other | Perk |\n|---|---|---|\n| [ ] | [X] | `[ ]` |\n| [x] | plain | [Docs](https://example.com) |";
+  const out = renderMarkdown(src, undefined, { sourceLines: true }).html;
+  assert.ok(out.includes('<td><input type="checkbox" data-task="7" data-task-cell="0"></td>'), out);
+  assert.ok(out.includes('<td><input type="checkbox" data-task="7" data-task-cell="1" checked></td>'), out);
+  assert.ok(out.includes('<td><input type="checkbox" data-task="8" data-task-cell="0" checked></td>'), out);
+  assert.ok(out.includes('<td><code>[ ]</code></td>'), out);
+  assert.ok(out.includes('<a href="https://example.com">Docs</a>'), out);
+  const plain = renderMarkdown(src).html;
+  assert.equal((plain.match(/type="checkbox" disabled/g) ?? []).length, 3);
+  assert.ok(!plain.includes("data-task"));
+});
+
 test("footnote and LaTeX syntax pass through as literal text", () => {
   assert.ok(html.includes("this is not a footnote reference[^1]"));
   assert.ok(html.includes("[^1]: this definition also renders as literal text."));

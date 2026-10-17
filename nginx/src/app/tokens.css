@@ -10,7 +10,7 @@
  * mark/del - every page but md.
  */
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   --bg: #ffffff;
   --bg-soft: #f6f8fa;
   --bg-inset: #f0f3f6;
@@ -40,6 +40,7 @@
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 }
 html[data-theme="dark"] {
+  color-scheme: dark;
   --bg: #0d1117;
   --bg-soft: #161b22;
   --bg-inset: #1c2128;

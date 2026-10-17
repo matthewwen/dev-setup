@@ -3,7 +3,7 @@ import { apiFacets, apiPrompts, apiTask } from "./api";
 import type { Run, Task } from "./types";
 import { Stars } from "./Library";
 import { useAutosave } from "./useAutosave";
-import { onListKeyDown } from "./listKeys";
+import { copyPromptText, onListKeyDown } from "./listKeys";
 import { CopyButton } from "../shared/CopyButton";
 import { useTheme } from "../app/theme";
 import "./Prompts.css";
@@ -496,7 +496,7 @@ export function Detail({
         <div className="pactions">
           <button className="btn" onClick={onBack}>Library</button>
           <a className="btn" href="/">Explorer</a>
-          <CopyButton text={() => promptText} label="Copy prompt" />
+          <CopyButton text={() => copyPromptText(promptText)} label="Copy Prompt" />
           <button className="btn" onClick={deleteTask}>Delete</button>
           <button className="btn" onClick={toggleTheme}>{theme === "dark" ? "☀" : "◐"}</button>
         </div>

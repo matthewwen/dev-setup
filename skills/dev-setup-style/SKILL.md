@@ -22,11 +22,18 @@ allowed-tools: Read Glob Grep
 
 ### Commits
 
-- Subject: `type(scope): summary`. Imperative. At most 60 characters.
-- Body: omit it. Add at most 3 lines only when the subject cannot carry the
-  reason for the change.
+- Subject: a general overview of the change. Imperative. At most 60 characters.
+  The `type(scope):` prefix is optional.
+- Prefer an overview with up to 3 bullet points summarizing the main changes,
+  or use the overview alone when it captures the change clearly.
 - Do not list every changed file or function. The diff shows that.
-- Good: `fix(nginx): viewer anchor scrolling for numeric headings`
+- Good:
+  ```text
+  Improve prompt copying and Markdown checkboxes
+
+  - Keep editor wrapping out of copied prompts
+  - Render standalone and empty Markdown checkboxes
+  ```
 - Bad: a subject plus a bullet list of six changes.
 
 ### Comments and docstrings

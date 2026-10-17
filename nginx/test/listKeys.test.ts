@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { backspaceEdit, enterEdit, indentEdit, softBreakEdit, wrapEdit, type Edit } from "../src/prompts/listKeys.ts";
+import { backspaceEdit, copyPromptText, enterEdit, indentEdit, softBreakEdit, wrapEdit, type Edit } from "../src/prompts/listKeys.ts";
 
 function run(value: string, edit: Edit | null): string | null {
   return edit && value.slice(0, edit.from) + edit.text + value.slice(edit.to);
@@ -125,4 +125,9 @@ test("enter on an empty continuation line clears its indent", () => {
 
 test("shift-enter outside a list does nothing", () => {
   assert.equal(softBreakEdit("foo bar", 3, 3), null);
+});
+
+test("copy joins wrapped list text while preserving nested items and paragraphs", () => {
+  const value = "1. First line\n   continued\n   again\n  a. Nested\n     continuation\n2. Next\n\n   New paragraph\n\nPlain text\n    indented text";
+  assert.equal(copyPromptText(value), "1. First line continued again\n  a. Nested continuation\n2. Next\n\n   New paragraph\n\nPlain text\n    indented text");
 });

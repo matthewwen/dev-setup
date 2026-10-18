@@ -14,8 +14,8 @@ allowed-tools: Read Glob Grep
    changes code. Apply the "Design documents" rules when the task writes a
    document. Both rule sets always apply; the task decides which one is
    exercised.
-2. If the user did not give a path, ask for it before you create the file.
-   Use the defaults in "File placement" only when the user says "default".
+2. If the user did not give a path, use the defaults in "File placement".
+   Do not ask for a path when a default applies.
 3. Do not take file locations from memory. This file is the source of truth.
 
 ## Code
@@ -142,7 +142,7 @@ Stop after each chunk and wait for the go-ahead before you start the next.
 
 ## File placement
 
-Ask when the user gives no path. Defaults when the user says "default":
+Use these defaults when the user gives no path:
 
 | Kind | Default path |
 |---|---|

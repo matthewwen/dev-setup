@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, type RefObject } from "react";
 import { renderMarkdown, type Block, type Heading } from "./render";
 import { useMermaid } from "./mermaid";
-import "./Markdown.css";
+import "./Markdown.scss";
 
 // Renders Markdown source to HTML and wires the copy buttons the renderer
 // embeds in every fenced code block. Those buttons are plain markup inside

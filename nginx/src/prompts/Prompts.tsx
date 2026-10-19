@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { apiPrompts } from "./api";
 import { Library } from "./Library";
 import { Detail } from "./Detail";
-import "./Prompts.css";
+import "./Prompts.scss";
 
 // /prompts/ is the library, /prompts/?tag=<tag> is the library filtered to
 // one tag, and /prompts/<id> is one task. This component owns

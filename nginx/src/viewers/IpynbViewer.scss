@@ -1,0 +1,14 @@
+@use "document-layout";
+
+.ipynb-viewer {
+  @include document-layout.document-layout;
+}
+@media (max-width: 900px) {
+  .ipynb-viewer {
+    #toc { display: none; }
+    main { padding-top: 24px; }
+  }
+}
+@media print {
+  .ipynb-viewer main { display: block; padding: 0; }
+}

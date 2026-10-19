@@ -3,7 +3,7 @@ import type { Block } from "../markdown/render";
 import { apiPatchFile } from "../shared/files-api";
 import { onMarkdownKeyDown } from "./keys";
 import { readSpell } from "./spell";
-import "./Edit.css";
+import "./Edit.scss";
 
 interface SaveError {
   message: string;

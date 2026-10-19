@@ -9,7 +9,7 @@ import { useKeys } from "./useKeys";
 import { matchRegex } from "./highlight";
 import { opensInPreview, previewable } from "./format";
 import { useDebounced } from "../../shared/FindBox";
-import "./Explorer.css";
+import "./Explorer.scss";
 
 const CACHE_TTL_MS = 10000;
 

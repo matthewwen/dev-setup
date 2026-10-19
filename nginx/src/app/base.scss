@@ -11,9 +11,10 @@ body {
   line-height: 1.7;
   -webkit-font-smoothing: antialiased;
 }
-a { color: var(--link); text-decoration: none; }
-a:hover { text-decoration: underline; }
-
+a {
+  color: var(--link); text-decoration: none;
+  &:hover { text-decoration: underline; }
+}
 /* ---------- toolbar ----------
  * Scoped to .toolbar (the shared Toolbar component) rather than the bare
  * `header`/`#crumbs` elements, since the explorer builds its own header
@@ -26,13 +27,15 @@ header.toolbar {
   backdrop-filter: saturate(180%) blur(8px);
   border-bottom: 1px solid var(--border);
 }
-.toolbar #crumbs {
-  flex: 1 1 260px; min-width: 0;
-  font-family: var(--mono); font-size: 13px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  color: var(--fg-muted);
+.toolbar {
+  #crumbs {
+    flex: 1 1 260px; min-width: 0;
+    font-family: var(--mono); font-size: 13px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    color: var(--fg-muted);
+    b { color: var(--fg); font-weight: 600; }
+  }
 }
-.toolbar #crumbs b { color: var(--fg); font-weight: 600; }
 .btn {
   flex: 0 0 auto;
   padding: 4px 10px;
@@ -40,9 +43,9 @@ header.toolbar {
   color: var(--fg); background: var(--bg-soft);
   border: 1px solid var(--border); border-radius: 6px;
   cursor: pointer;
+  &:hover { background: var(--bg-inset); text-decoration: none; }
+  &.on { color: #fff; background: var(--link); border-color: var(--link); }
 }
-.btn:hover { background: var(--bg-inset); text-decoration: none; }
-.btn.on { color: #fff; background: var(--link); border-color: var(--link); }
 .find {
   flex: 0 1 200px;
   padding: 5px 9px;
@@ -52,7 +55,6 @@ header.toolbar {
 }
 .find-hits { font-size: 12px; }
 mark { background: var(--mark); color: inherit; border-radius: 2px; }
-
 /* ---------- shared small pieces ---------- */
 kbd {
   font-family: var(--mono); font-size: 11px; padding: 2px 5px;

@@ -3,7 +3,7 @@ import { Markdown } from "../markdown/Markdown";
 import { apiReadFile, apiWriteFile, type FileOk } from "../shared/files-api";
 import { onMarkdownKeyDown } from "./keys";
 import { readSpell, writeSpell } from "./spell";
-import "./Edit.css";
+import "./Edit.scss";
 
 const PREVIEW_DELAY_MS = 300;
 const SPLIT_KEY = "md-edit-split";

@@ -1,0 +1,175 @@
+/* Layout for the prompt library and task page. The page has its own header
+ * (title, status line, action buttons) instead of the shared Toolbar, so it
+ * does not use header.toolbar. Every rule is scoped under .prompts, as
+ * Explorer.scss scopes under .explorer. */
+.prompts {
+  max-width: 980px; margin: 0 auto; padding: 0 20px 40px;
+  .phead {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+    padding: 14px 0;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: saturate(180%) blur(8px);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+    h1 { flex: 1 1 auto; margin: 0; font-size: 15px; font-weight: 600; }
+  }
+  .pactions { display: flex; gap: 6px; flex: 0 0 auto; }
+  .pstatus {
+    font-size: 12px; color: var(--fg-muted); font-family: var(--mono);
+    &.error { color: var(--del); }
+  }
+  .perror { margin: 0 0 12px; }
+  /* ---------------------------- library ---------------------------- */
+  .pbody { display: flex; gap: 24px; align-items: flex-start; }
+  .psidebar {
+    flex: 0 0 200px; display: flex; flex-direction: column; gap: 18px;
+    .find { width: 100%; flex: none; }
+  }
+  .pfacet h2 {
+    margin: 0 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--fg-muted);
+  }
+  .pchip {
+    display: block; width: 100%; text-align: left;
+    padding: 4px 8px; margin-bottom: 4px;
+    font-size: 12px; font-family: var(--sans);
+    color: var(--fg); background: var(--bg-soft);
+    border: 1px solid var(--border); border-radius: 6px; cursor: pointer;
+    &.on { color: #fff; background: var(--link); border-color: var(--link); }
+    .muted { float: right; }
+    &.on .muted { color: rgba(255, 255, 255, .8); }
+  }
+  .pradio {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--fg-muted); margin-bottom: 4px; cursor: pointer;
+  }
+  .pstars { display: inline-flex; gap: 1px; }
+  .pstar {
+    border: 0; background: none; cursor: pointer;
+    font-size: 15px; color: var(--border); padding: 0 1px; line-height: 1;
+    &.on { color: var(--mark); }
+  }
+  .plist { flex: 1 1 auto; min-width: 0; }
+  .plist-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 10px; font-size: 12px;
+  }
+  select {
+    appearance: none; -webkit-appearance: none; -moz-appearance: none;
+    padding: 5px 26px 5px 10px;
+    font-family: var(--sans); font-size: 12px;
+    color: var(--fg); background: var(--bg-soft);
+    border: 1px solid var(--border); border-radius: 7px;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%238b949e' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 9px center;
+    background-size: 10px 7px;
+    &:hover { background-color: var(--bg-inset); }
+    &:focus { outline: 2px solid var(--link); outline-offset: -1px; }
+  }
+  .ptasks { display: flex; flex-direction: column; gap: 8px; }
+  .pgroup + .pgroup { margin-top: 18px; }
+  .pgroup-head {
+    margin: 0 0 8px; font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .03em; color: var(--fg-muted);
+  }
+  .tdates { white-space: nowrap; }
+  .trow {
+    padding: 10px 14px; cursor: pointer;
+    background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px;
+    &:hover { background: var(--bg-inset); }
+  }
+  .trow-top, .trow-bottom { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+  .trow-top { font-weight: 600; margin-bottom: 3px; }
+  .trow-bottom { font-size: 12px; color: var(--fg-muted); }
+  .tstats { font-weight: 400; white-space: nowrap; }
+  .tbest { font-size: 11px; margin-top: 4px; }
+  /* ---------------------------- models panel ---------------------------- */
+  .pmodels-scope { margin-bottom: 12px; font-size: 12px; }
+  .mtable {
+    width: 100%; border-collapse: collapse; font-size: 13px;
+    th, td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--border); }
+    th { font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: var(--fg-muted); }
+  }
+  .mbar-cell { width: 140px; }
+  .mbar { height: 8px; background: var(--link); border-radius: 4px; }
+  /* ---------------------------- task page ---------------------------- */
+  &.pdetail { padding-top: 0; }
+  .pdetail-body { display: flex; flex-direction: column; gap: 14px; }
+  .pfield { display: flex; flex-direction: column; gap: 4px; }
+  .plabel { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--fg-muted); }
+  .pfield {
+    input, textarea {
+      padding: 8px 10px; font-family: var(--mono); font-size: 13px;
+      color: var(--fg); background: var(--bg-soft);
+      border: 1px solid var(--border); border-radius: 8px; resize: vertical;
+    }
+    input:focus, textarea:focus { outline: 2px solid var(--link); outline-offset: -1px; }
+  }
+  .pgrow { overflow: hidden; }
+  .prompt-label { display: flex; align-items: center; gap: 6px; }
+  .prompt-toggle { padding: 2px 6px; font-size: 11px; letter-spacing: normal; text-transform: none; }
+  .prompt-minimized {
+    height: 12rem; overflow-y: auto; scrollbar-width: none;
+    &::-webkit-scrollbar { display: none; }
+  }
+  .pmeta { margin: -6px 0 0; font-size: 12px; }
+  .preflist {
+    margin: -6px 0 0; padding: 0; list-style: none; font-size: 13px;
+    li {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 4px 0;
+    }
+  }
+  .pref-actions {
+    display: flex; gap: 4px; flex: 0 0 auto;
+    .btn { padding: 2px 6px; }
+  }
+  .pref-editing input, .pref-add input {
+    flex: 1 1 auto; padding: 5px 9px;
+    font-family: var(--mono); font-size: 12px;
+    color: var(--fg); background: var(--bg-soft);
+    border: 1px solid var(--border); border-radius: 7px;
+  }
+  .pref-add { margin-top: 2px; }
+  .pruns { margin-top: 6px; }
+  .pruns-head {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
+    h2 { margin: 0; font-size: 13px; font-weight: 600; }
+  }
+  .rtable {
+    width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 10px;
+    th, td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: var(--fg-muted); }
+  }
+  .rnotes { max-width: 280px; }
+  .ractions {
+    white-space: nowrap;
+    .btn { padding: 2px 6px; }
+  }
+  .rform {
+    padding: 12px; margin-top: 4px;
+    background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px;
+  }
+  .rform-row { display: flex; gap: 16px; margin-bottom: 8px; flex-wrap: wrap; }
+  .rform-row label, .rform-notes { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--fg-muted); }
+  .rform-notes {
+    display: flex; flex-direction: column; align-items: stretch; gap: 4px; margin-bottom: 8px;
+    textarea {
+      font-family: var(--mono); font-size: 12px; padding: 6px 8px;
+      color: var(--fg); background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+    }
+  }
+  .rform {
+    input {
+      &[type="text"], &:not([type]) {
+        padding: 4px 7px; font-family: var(--mono); font-size: 12px;
+        color: var(--fg); background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+      }
+    }
+  }
+  .rform-narrow { width: 48px; }
+  .rform-actions { display: flex; gap: 6px; justify-content: flex-end; }
+}

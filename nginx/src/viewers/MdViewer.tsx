@@ -15,7 +15,7 @@ import { blockAt, markedBlocks } from "../review/model";
 import { BlockEditor } from "../edit/BlockEditor";
 import { DocEditor } from "../edit/DocEditor";
 import { useTaskToggle } from "../edit/useTaskToggle";
-import "./MdViewer.css";
+import "./MdViewer.scss";
 
 // Rendering a very large document blocks the page, so SizeGuard asks first
 // and offers the buffered text viewer.

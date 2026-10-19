@@ -1,0 +1,95 @@
+/* Content typography for rendered Markdown. Shared by the standalone
+ * Markdown viewer and, later, notebook Markdown cells. */
+.markdown-body {
+  h1, h2, h3, h4, h5, h6 { margin: 28px 0 14px; line-height: 1.3; font-weight: 600; scroll-margin-top: 76px; }
+  h1 { font-size: 2em; padding-bottom: 8px; border-bottom: 1px solid var(--border); margin-top: 0; }
+  h2 { font-size: 1.5em; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.22em; }
+  h4 { font-size: 1.05em; }
+  h5, h6 { font-size: 1em; color: var(--fg-muted); }
+  .anchor { margin-left: 8px; color: var(--border); font-weight: 400; opacity: 0; }
+  h1:hover .anchor, h2:hover .anchor, h3:hover .anchor, h4:hover .anchor, h5:hover .anchor, h6:hover .anchor { opacity: 1; }
+  p { margin: 0 0 16px; }
+  ul, ol { margin: 0 0 16px; padding-left: 26px; }
+  li {
+    margin: 4px 0;
+    > ul, > ol { margin: 4px 0; }
+    &.task { list-style: none; margin-left: -20px; }
+    &.task input { margin-right: 8px; }
+    &.task input[data-task] { cursor: pointer; }
+  }
+  hr { height: 1px; margin: 28px 0; border: 0; background: var(--border); }
+  blockquote {
+    margin: 0 0 16px; padding: 2px 16px;
+    color: var(--quote); border-left: 3px solid var(--border);
+    > :last-child { margin-bottom: 0; }
+  }
+  img { max-width: 100%; border-radius: 6px; }
+  kbd {
+    font-family: var(--mono); font-size: 11px; padding: 2px 5px;
+    border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px;
+    background: var(--bg-soft);
+  }
+  code {
+    font-family: var(--mono); font-size: 85%;
+    padding: .2em .4em; border-radius: 5px; background: var(--bg-inset);
+  }
+  pre {
+    position: relative; margin: 0 0 16px; padding: 14px 16px;
+    overflow-x: auto; background: var(--bg-soft);
+    border: 1px solid var(--border); border-radius: 8px;
+    font-size: 13.5px; line-height: 1.55;
+    code { padding: 0; background: none; font-size: 100%; }
+    .lang {
+      position: absolute; top: 0; right: 44px;
+      padding: 1px 7px; font-family: var(--sans); font-size: 10px;
+      letter-spacing: .05em; text-transform: uppercase;
+      color: var(--fg-muted); background: var(--bg-inset);
+      border-radius: 0 0 5px 5px;
+    }
+    .copy {
+      position: absolute; top: 6px; right: 6px; padding: 2px 7px;
+      font-family: var(--sans); font-size: 11px; color: var(--fg-muted);
+      background: var(--bg); border: 1px solid var(--border); border-radius: 5px;
+      cursor: pointer; opacity: 0; transition: opacity .12s;
+    }
+    &:hover .copy { opacity: 1; }
+  }
+  table {
+    display: block; width: max-content; max-width: 100%;
+    margin: 0 0 16px; overflow-x: auto;
+    border-collapse: collapse; font-size: 14px;
+  }
+  th, td { padding: 6px 13px; border: 1px solid var(--border); }
+  th { background: var(--bg-soft); font-weight: 600; }
+  tbody tr:nth-child(even) { background: var(--bg-soft); }
+  .tok-str { color: var(--code-str); }
+  .tok-kw { color: var(--code-kw); }
+  .tok-num { color: var(--code-num); }
+  .tok-com { color: var(--code-com); font-style: italic; }
+  .diff-a { color: var(--add); }
+  .diff-d { color: var(--del); }
+  details {
+    margin: 0 0 16px; padding: 10px 14px;
+    background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px;
+  }
+  summary { cursor: pointer; font-weight: 600; }
+  #frontmatter {
+    margin: 0 0 24px; padding: 10px 14px;
+    font-family: var(--mono); font-size: 12.5px; white-space: pre-wrap;
+    color: var(--fg-muted); background: var(--bg-soft);
+    border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 6px;
+  }
+  .mermaid {
+    margin: 0 0 16px; overflow-x: auto; text-align: center;
+    pre { text-align: left; }
+    svg { max-width: 100%; height: auto; }
+  }
+  .mermaid-error {
+    margin: 0 0 8px; font-family: var(--mono); font-size: 12.5px; color: var(--del);
+    text-align: left; white-space: pre-wrap;
+  }
+}
+@media print {
+  .markdown-body pre .copy { display: none; }
+}

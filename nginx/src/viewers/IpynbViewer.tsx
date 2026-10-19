@@ -5,7 +5,7 @@ import { Notebook } from "../notebook/Notebook";
 import { renderNotebook, type NotebookModel } from "../notebook/render";
 import { tocEntries, shouldShowToc } from "../markdown/toc";
 import { fetchRaw, textViewUrl } from "../shared/fetch";
-import "./IpynbViewer.css";
+import "./IpynbViewer.scss";
 
 // Embedded images make notebooks large. SizeGuard asks first and offers the
 // buffered text viewer.

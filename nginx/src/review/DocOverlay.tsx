@@ -18,7 +18,7 @@ interface Sel {
 // none of its nodes. Everything here works from the outside: delegated
 // listeners on the body, controls positioned over the host, and classes set
 // on the renderer's own [data-line] elements. No wrapper per block, so no
-// Markdown.css sibling or first-child rule changes.
+// Markdown.scss sibling or first-child rule changes.
 const highlights = typeof CSS !== "undefined" && "highlights" in CSS && typeof Highlight !== "undefined" ? CSS.highlights : null;
 
 // Selection.toString() adds whitespace between cells and items that the text nodes do not hold.

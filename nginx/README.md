@@ -11,7 +11,7 @@ JSON, and Inspect AI eval logs.
 ```
 install.sh     builds the app, copies it and the rendered confs into the nginx config dir, then reloads
 package.json   the @dev-setup/nginx-viewers package: build, dev, check, test
-build.mts      esbuild driver; writes dist/app/
+build.mts      esbuild + Sass driver; writes dist/app/
 src/           the React app, one component per viewer (TypeScript)
 test/          node:test suites and fixtures
 conf/          nginx config templates; @...@ fields are filled at install time
@@ -655,6 +655,14 @@ on the next browser reload. The installed server on port 80 does not change.
 Ctrl-C stops the watcher and the second nginx, and deletes the temp dir.
 To browse content, symlink a directory into the temp `www/` that the script
 prints. Use `./scripts/dev.sh --port <n>` for another port.
+
+Styles live beside their components as `.scss` files. The build compiles them
+with Dart Sass before esbuild bundles them into `app.css`, with source maps
+back to the SCSS. Use nesting for scoped selectors and `&` for states such as
+`&:hover` or `&.active`. Shared document layout rules live in
+`src/viewers/_document-layout.scss` and use `@use` and `@include`. The dev
+watcher rebuilds when either a stylesheet or an imported partial changes.
+CSS custom properties in `src/app/tokens.scss` keep theme switching at runtime.
 
 The renderers in `src/markdown/render.ts` and `src/notebook/render.ts` are
 pure functions, so `test/` checks them in node with no DOM.

@@ -1,0 +1,54 @@
+/* Full-viewport layout, scoped to .text-viewer so it does not affect the
+ * document-flow layout the other viewers use. */
+.text-viewer {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  main {
+    flex: 1 1 auto;
+    overflow: auto;
+    min-height: 0;
+  }
+  #body {
+    margin: 0;
+    padding: 10px 0 60px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.55;
+  }
+  .ln {
+    display: flex;
+    &:hover { background: var(--bg-soft); }
+    .no {
+      flex: 0 0 68px;
+      padding-right: 12px;
+      text-align: right;
+      color: var(--fg-muted);
+      user-select: none;
+    }
+    .tx { flex: 1 1 auto; white-space: pre; overflow-x: hidden; }
+  }
+  &.wrap .ln .tx { white-space: pre-wrap; word-break: break-word; }
+  .card { margin: 14px; }
+  footer {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    padding: 5px 14px;
+    font-size: 12px;
+    color: var(--fg-muted);
+    background: var(--bg-soft);
+    border-top: 1px solid var(--border);
+    .spacer { flex: 1 1 auto; }
+  }
+  .bar {
+    flex: 0 0 160px;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--bg-inset);
+    overflow: hidden;
+    span { display: block; height: 100%; background: var(--ok); }
+  }
+}

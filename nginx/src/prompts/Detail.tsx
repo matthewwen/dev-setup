@@ -6,7 +6,7 @@ import { useAutosave } from "./useAutosave";
 import { copyPromptText, onListKeyDown } from "./listKeys";
 import { CopyButton } from "../shared/CopyButton";
 import { useTheme } from "../app/theme";
-import "./Prompts.css";
+import "./Prompts.scss";
 
 function parseTagsClient(raw: string): string[] {
   const seen = new Set<string>();

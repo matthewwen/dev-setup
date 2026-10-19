@@ -4,7 +4,7 @@ import { SizeGuard } from "../shared/SizeGuard";
 import { FindBox, useDebounced } from "../shared/FindBox";
 import { CopyButton } from "../shared/CopyButton";
 import { fetchRaw, rawUrl, textViewUrl } from "../shared/fetch";
-import "./JsonViewer.css";
+import "./JsonViewer.scss";
 
 // Parsing and rendering a very large document blocks the page, so SizeGuard
 // asks first and offers the buffered text viewer.

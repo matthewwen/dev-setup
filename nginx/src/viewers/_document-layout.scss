@@ -1,0 +1,22 @@
+@mixin document-layout {
+  main { display: flex; gap: 32px; max-width: 1240px; margin: 0 auto; padding: 32px 20px 120px; }
+  #toc {
+    flex: 0 0 220px; position: sticky; top: 76px; align-self: flex-start;
+    max-height: calc(100vh - 120px); overflow-y: auto;
+    font-size: 13px; line-height: 1.5;
+    border-left: 1px solid var(--border); padding-left: 14px;
+    div {
+      color: var(--fg-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+      font-size: 11px; margin-bottom: 8px;
+    }
+    a {
+      display: block; padding: 3px 0; color: var(--fg-muted);
+      &:hover { color: var(--fg); text-decoration: none; }
+      &.lvl3 { padding-left: 12px; }
+      &.lvl4 { padding-left: 24px; font-size: 12px; }
+      &.active { color: var(--link); font-weight: 600; }
+    }
+  }
+  article { flex: 1 1 auto; min-width: 0; max-width: 860px; }
+  main.no-toc article { margin: 0 auto; }
+}

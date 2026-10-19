@@ -3,7 +3,7 @@ import type { Action, ReviewComment, ReviewOp } from "../shared/review-api";
 import type { ReviewState } from "./useReview";
 import { ACTION_LABELS, excerpt, groupComments, lineLabel, relativeTime } from "./model";
 import { onListKeyDown } from "../prompts/listKeys";
-import "./Review.css";
+import "./Review.scss";
 
 // What the composer comments on: a block (optionally a phrase inside it),
 // or the whole document when `line` is null.

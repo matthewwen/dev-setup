@@ -3,7 +3,7 @@ import { Toolbar } from "../shared/Toolbar";
 import { FindBox, useDebounced } from "../shared/FindBox";
 import { rawUrl } from "../shared/fetch";
 import { human } from "../shared/format";
-import "./TextViewer.css";
+import "./TextViewer.scss";
 
 const CHUNK = 256 * 1024; // bytes per range request
 const TAIL_BYTES = 1024 * 1024; // window loaded by the End button

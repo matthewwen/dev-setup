@@ -11,7 +11,8 @@
 // the modules that app.js imports on demand (Mermaid). Every viewer conf
 // rewrites to /__app/index.html; the app picks the viewer from
 // location.pathname and the query string.
-import { build, context } from "esbuild";
+import { build, context, type Plugin } from "esbuild";
+import { compileAsync } from "sass";
 import { mkdirSync, copyFileSync, rmSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -31,7 +32,24 @@ function copyShell() {
   copyFileSync(join(BASE_DIR, "src", "favicon.svg"), join(appOut, "favicon.svg"));
 }
 
+const sassPlugin: Plugin = {
+  name: "sass",
+  setup(build) {
+    build.onLoad({ filter: /\.scss$/ }, async ({ path }) => {
+      const result = await compileAsync(path, { charset: false, sourceMap: true, sourceMapIncludeSources: true });
+      const sourceMap = Buffer.from(JSON.stringify(result.sourceMap)).toString("base64");
+      return {
+        contents: `${result.css}\n/*# sourceMappingURL=data:application/json;base64,${sourceMap} */`,
+        loader: "css",
+        resolveDir: dirname(path),
+        watchFiles: result.loadedUrls.filter(url => url.protocol === "file:").map(url => fileURLToPath(url)),
+      };
+    });
+  },
+};
+
 const esbuildOptions = {
+  plugins: [sassPlugin],
   entryPoints: [join(BASE_DIR, "src", "main.tsx")],
   bundle: true,
   outdir: appOut,

@@ -2,8 +2,8 @@ import { useRef } from "react";
 import { CopyButton } from "../shared/CopyButton";
 import { useMermaid } from "../markdown/mermaid";
 import type { CellModel, NotebookModel, OutputModel } from "./render";
-import "./Notebook.css";
-import "../markdown/Markdown.css";
+import "./Notebook.scss";
+import "../markdown/Markdown.scss";
 
 function Output({ o }: { o: OutputModel }) {
   switch (o.kind) {

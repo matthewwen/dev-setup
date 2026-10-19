@@ -4,7 +4,7 @@ import type { Sort, TaskSummary } from "./types";
 import { FindBox, useDebounced } from "../shared/FindBox";
 import { useTheme } from "../app/theme";
 import { formatAgo, groupByDate } from "./dates";
-import "./Prompts.css";
+import "./Prompts.scss";
 
 export function Stars({ value, onSet }: { value: number; onSet: (n: number) => void }) {
   return (

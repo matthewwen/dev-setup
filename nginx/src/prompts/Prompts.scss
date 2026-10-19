@@ -173,3 +173,39 @@
   .rform-narrow { width: 48px; }
   .rform-actions { display: flex; gap: 6px; justify-content: flex-end; }
 }
+
+.prompts {
+  .pfilter-toggle, .pfilter-close, .pfilter-backdrop { display: none; }
+
+  @media (max-width: 700px) {
+    padding: 0 12px 24px;
+    .phead { gap: 8px; padding: 10px 0; }
+    .phead h1 { flex-basis: 100%; overflow-wrap: anywhere; }
+    .pactions { flex-wrap: wrap; }
+    .pactions .btn { min-height: 36px; }
+    .pfilter-toggle, .pfilter-close { display: block; }
+    .pfilter-close { align-self: flex-end; min-height: 40px; }
+    .pbody { display: block; }
+    .psidebar {
+      display: none; position: fixed; inset: 0 auto 0 0;
+      width: min(320px, 88vw); padding: 16px;
+      overflow-y: auto; overscroll-behavior: contain;
+      background: var(--bg); z-index: 31;
+      box-shadow: 4px 0 20px rgb(0 0 0 / 20%);
+      &.open { display: flex; }
+      .find { font-size: 16px; }
+      .pchip, .pradio { min-height: 36px; overflow-wrap: anywhere; }
+      .pstar { font-size: 24px; padding: 6px; }
+    }
+    .pfilter-backdrop {
+      display: block; position: fixed; inset: 0; z-index: 30;
+      border: 0; background: rgb(0 0 0 / 35%);
+    }
+    .trow-top, .trow-bottom { flex-wrap: wrap; gap: 2px 8px; }
+    .ttitle, .ttags, .tbest { overflow-wrap: anywhere; min-width: 0; }
+    .tdates { white-space: normal; }
+    .pmodels, .pruns { overflow-x: auto; }
+    .pfield input, .pfield textarea { min-width: 0; font-size: 16px; }
+    .pref-editing input, .pref-add input { min-width: 0; }
+  }
+}

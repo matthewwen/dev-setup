@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { useTheme } from "../app/theme";
 import { pathParts } from "./format";
 import { rawUrl } from "./fetch";
@@ -10,9 +10,22 @@ import { rawUrl } from "./fetch";
 export function Toolbar({ path, actions }: { path: string; actions?: ReactNode }) {
   const [, toggleTheme] = useTheme();
   const parts = pathParts(path);
+  const headerRef = useRef<HTMLElement>(null);
+
+  useLayoutEffect(() => {
+    const header = headerRef.current;
+    if (!header) {
+      return;
+    }
+    const updateHeight = () => header.parentElement?.style.setProperty("--toolbar-height", `${header.getBoundingClientRect().height}px`);
+    updateHeight();
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <header className="toolbar">
+    <header className="toolbar" ref={headerRef}>
       <div id="crumbs">
         <a href="/">/</a>
         {parts.map((part, i) => {

@@ -51,16 +51,19 @@ export function MdViewer({ path }: { path: string }) {
   const [headings, setHeadings] = useState<Heading[]>([]);
   const [tocHidden, setTocHidden] = useState(() => localStorage.getItem("md-toc") === "0");
   const [tocDrawer, setTocDrawer] = useState(false);
+  const [tocRequested, setTocRequested] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const scrolledHashRef = useRef(false);
   const [reviewOpen, setReviewOpen] = useState(() => localStorage.getItem("md-comments") === "1");
   const [editing, setEditing] = useState(false);
   const tocFits = !useMediaQuery(reviewOpen ? NARROW_WITH_REVIEW : NARROW);
 
-  const entries = useMemo(() => tocEntries(headings), [headings]);
-  const hasToc = shouldShowToc(entries) && !editing;
-  const sidebar = hasToc && tocFits && !tocHidden;
-  const showToc = sidebar || (hasToc && !tocFits && tocDrawer);
+  const entries = useMemo(() => {
+    const sections = tocEntries(headings);
+    return sections.length ? sections : tocEntries(headings, 1);
+  }, [headings]);
+  const sidebar = !editing && tocFits && !tocHidden && (shouldShowToc(entries) || tocRequested);
+  const showToc = sidebar || (!editing && !tocFits && tocDrawer);
   if (tocFits && tocDrawer) {
     setTocDrawer(false);
   }
@@ -97,16 +100,27 @@ export function MdViewer({ path }: { path: string }) {
     document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
   }, [raw]);
 
+  useEffect(() => {
+    if (!tocDrawer) {
+      return;
+    }
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setTocDrawer(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [tocDrawer]);
+
   const toggleToc = () => {
     if (!tocFits) {
       setTocDrawer(open => !open);
       return;
     }
-    setTocHidden(hidden => {
-      const next = !hidden;
-      localStorage.setItem("md-toc", next ? "0" : "1");
-      return next;
-    });
+    setTocRequested(true);
+    setTocHidden(sidebar);
+    localStorage.setItem("md-toc", sidebar ? "0" : "1");
   };
 
   // ---------- review comments ----------
@@ -256,7 +270,7 @@ export function MdViewer({ path }: { path: string }) {
             <button className={`btn${reviewOpen ? " on" : ""}`} onClick={() => showReview(!reviewOpen)} title="Toggle comments">
               Comments{openCount ? ` ${openCount}` : ""}
             </button>
-            <button className={`btn${tocDrawer ? " on" : ""}`} onClick={toggleToc} title="Toggle contents">
+            <button className={`btn${showToc ? " on" : ""}`} onClick={toggleToc} title="Toggle contents" aria-label="Document contents" aria-expanded={showToc} aria-controls="toc" disabled={editing || !loaded}>
               &#9776;
             </button>
           </>
@@ -267,6 +281,7 @@ export function MdViewer({ path }: { path: string }) {
         {showToc && (
           <nav id="toc" className={tocFits ? "" : "drawer"}>
             <div>Contents</div>
+            {entries.length === 0 && <p className="muted">No headings in this document.</p>}
             {entries.map(h => (
               <a
                 key={h.id}

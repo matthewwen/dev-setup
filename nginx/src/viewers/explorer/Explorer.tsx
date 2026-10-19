@@ -77,7 +77,7 @@ export function Explorer() {
   const [searchData, setSearchData] = useState<SearchResponse | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const [treeHidden, setTreeHidden] = useState(false);
+  const [treeHidden, setTreeHidden] = useState(() => window.matchMedia("(max-width: 700px)").matches);
   const [previewOpen, setPreviewOpen] = useState(false);
 
   const qInputRef = useRef<HTMLInputElement>(null);
@@ -293,6 +293,7 @@ export function Explorer() {
         setQInput("");
         openDirectory(path);
       } else {
+        setTreeHidden(true);
         setPreviewOpen(false);
       }
     },
@@ -328,23 +329,25 @@ export function Explorer() {
     <div className="explorer">
       <header>
         <div className="row">
-          <button className="btn" onClick={() => setTreeHidden(h => !h)} title="Toggle the tree">
+          <button className="btn" onClick={() => setTreeHidden(h => !h)} title="Toggle the tree" aria-label="Directories" aria-expanded={!treeHidden} aria-controls="tree">
             &#9776;
           </button>
           <button className="btn" onClick={() => parent !== null && openDirectory(parent)} title="Parent directory">
             &#8593;
           </button>
           <Crumbs path={path} onGo={openDirectory} />
-          <button className={previewOpen ? "btn on" : "btn"} onClick={togglePreview} title="Preview pane (p)">
-            Preview
-          </button>
-          <ThemeButton />
-          <a className="btn" href="/prompts/" title="Saved prompts and model runs">
-            Prompts
-          </a>
-          <a className="btn" href={`/__raw${path === "/" ? "/" : `${path}/`}`} title="Plain nginx index and raw bytes">
-            Raw
-          </a>
+          <div className="explorer-actions">
+            <button className={previewOpen ? "btn on" : "btn"} onClick={togglePreview} title="Preview pane (p)">
+              Preview
+            </button>
+            <ThemeButton />
+            <a className="btn" href="/prompts/" title="Saved prompts and model runs">
+              Prompts
+            </a>
+            <a className="btn" href={`/__raw${path === "/" ? "/" : `${path}/`}`} title="Plain nginx index and raw bytes">
+              Raw
+            </a>
+          </div>
         </div>
         <div className="row row2">
           <input
@@ -377,7 +380,13 @@ export function Explorer() {
       </header>
 
       <main>
-        <Tree currentPath={path} levels={treeLevels} hidden={treeHidden} onOpen={openDirectory} onPrefetch={prefetch} />
+        {!treeHidden && <button className="tree-backdrop" aria-label="Close directories" onClick={() => setTreeHidden(true)} />}
+        <Tree currentPath={path} levels={treeLevels} hidden={treeHidden} onOpen={target => {
+          if (window.matchMedia("(max-width: 700px)").matches) {
+            setTreeHidden(true);
+          }
+          openDirectory(target);
+        }} onPrefetch={prefetch} />
         <section id="list">
           {offline && (
             <div className="card error">

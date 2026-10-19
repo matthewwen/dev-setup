@@ -107,23 +107,30 @@ function ModelsPanel({
 
 export function Library({
   tag,
-  onTagChange,
+  search,
+  onFilterChange,
+  onHome,
   onOpen,
   onNew,
 }: {
   tag: string;
-  onTagChange: (tag: string) => void;
+  search: string;
+  onFilterChange: (key: string, value: string) => void;
+  onHome: () => void;
   onOpen: (id: number) => void;
   onNew: () => Promise<void>;
 }) {
   const [theme, toggleTheme] = useTheme();
   const [view, setView] = useState<"library" | "models">("library");
 
-  const [q, setQ] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const params = new URLSearchParams(search);
+  const q = params.get("q") ?? "";
+  const selectedModel = params.get("model") ?? "";
+  const minRating = Math.max(0, Math.min(5, Number(params.get("rating")) || 0));
+  const sortParam = params.get("sort");
+  const sort: Sort = sortParam === "created" || sortParam === "title" ? sortParam : "updated";
   const debouncedQ = useDebounced(q, 60);
-  const [selectedModel, setSelectedModel] = useState("");
-  const [minRating, setMinRating] = useState(0);
-  const [sort, setSort] = useState<Sort>("updated");
 
   const [rows, setRows] = useState<TaskSummary[]>([]);
   const [total, setTotal] = useState(0);
@@ -202,10 +209,15 @@ export function Library({
     <div className="prompts">
       <header className="phead">
         <h1>
-          <a href="/prompts/" onClick={e => { e.preventDefault(); setView("library"); onTagChange(""); }}>Prompts</a>
+          <a href="/prompts/" onClick={e => { e.preventDefault(); setView("library"); onHome(); }}>Prompts</a>
           {" "}· {view === "models" ? "Models" : "Library"}
         </h1>
         <div className="pactions">
+          {view === "library" && (
+            <button className="btn pfilter-toggle" aria-expanded={filtersOpen} aria-controls="prompt-filters" onClick={() => setFiltersOpen(open => !open)}>
+              Filters{q || tag || selectedModel || minRating ? " •" : ""}
+            </button>
+          )}
           {view === "library" ? (
             <>
               <button className="btn" onClick={() => onNew().catch(err => setError(String(err)))}>+ New</button>
@@ -225,8 +237,10 @@ export function Library({
         <ModelsPanel facets={facets} scopeTag={modelsScopeTag} onScopeChange={setModelsScopeTag} />
       ) : (
         <div className="pbody">
-          <aside className="psidebar">
-            <FindBox value={q} onChange={setQ} placeholder="Search prompts" />
+          {filtersOpen && <button className="pfilter-backdrop" aria-label="Close filters" onClick={() => setFiltersOpen(false)} />}
+          <aside id="prompt-filters" className={`psidebar${filtersOpen ? " open" : ""}`} onKeyDown={e => { if (e.key === "Escape") { setFiltersOpen(false); } }}>
+            <button className="btn pfilter-close" onClick={() => setFiltersOpen(false)}>Done</button>
+            <FindBox value={q} onChange={value => onFilterChange("q", value)} placeholder="Search prompts" />
 
             <div className="pfacet">
               <h2>Tags</h2>
@@ -235,7 +249,7 @@ export function Library({
                   key={name}
                   type="button"
                   className={`pchip ${tag === name ? "on" : ""}`}
-                  onClick={() => onTagChange(tag === name ? "" : name)}
+                  onClick={() => onFilterChange("tag", tag === name ? "" : name)}
                 >
                   {name} <span className="muted">{count}</span>
                 </button>
@@ -246,7 +260,7 @@ export function Library({
             <div className="pfacet">
               <h2>Model</h2>
               <label className="pradio">
-                <input type="radio" checked={selectedModel === ""} onChange={() => setSelectedModel("")} />
+                <input type="radio" checked={selectedModel === ""} onChange={() => onFilterChange("model", "")} />
                 any
               </label>
               {modelNames.map(name => (
@@ -254,7 +268,7 @@ export function Library({
                   <input
                     type="radio"
                     checked={selectedModel === name}
-                    onChange={() => setSelectedModel(name)}
+                    onChange={() => onFilterChange("model", name)}
                   />
                   {name}
                 </label>
@@ -263,7 +277,7 @@ export function Library({
 
             <div className="pfacet">
               <h2>Rated ≥</h2>
-              <Stars value={minRating} onSet={setMinRating} />
+              <Stars value={minRating} onSet={value => onFilterChange("rating", value ? String(value) : "")} />
             </div>
           </aside>
 
@@ -274,7 +288,7 @@ export function Library({
               </span>
               <label className="psort">
                 sort:{" "}
-                <select value={sort} onChange={e => setSort(e.target.value as Sort)}>
+                <select value={sort} onChange={e => onFilterChange("sort", e.target.value)}>
                   <option value="updated">updated</option>
                   <option value="created">created</option>
                   <option value="title">title</option>

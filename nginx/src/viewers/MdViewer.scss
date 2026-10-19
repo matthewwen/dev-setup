@@ -3,12 +3,12 @@
 .md-viewer {
   @include document-layout.document-layout;
   #toc.drawer {
-    position: fixed; top: 52px; left: 0; bottom: 0; z-index: 15; align-self: stretch;
+    position: fixed; top: var(--toolbar-height, 52px); left: 0; bottom: 0; z-index: 15; align-self: stretch;
     width: min(300px, 85vw); max-height: none; padding: 12px 16px;
     background: var(--bg); border-left: 0; border-right: 1px solid var(--border);
     box-shadow: 4px 0 16px rgba(0, 0, 0, .14);
   }
-  .toc-backdrop { position: fixed; inset: 52px 0 0 0; z-index: 14; background: rgba(0, 0, 0, .25); }
+  .toc-backdrop { position: fixed; inset: var(--toolbar-height, 52px) 0 0 0; z-index: 14; background: rgba(0, 0, 0, .25); }
 }
 @media (max-width: 900px) {
   .md-viewer main { padding-top: 24px; }

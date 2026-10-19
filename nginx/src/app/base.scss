@@ -39,7 +39,8 @@ header.toolbar {
 .btn {
   flex: 0 0 auto;
   padding: 4px 10px;
-  font-size: 12px; font-family: var(--sans);
+  font-size: 12px; font-family: var(--sans); line-height: 1.4;
+  display: inline-flex; align-items: center; justify-content: center;
   color: var(--fg); background: var(--bg-soft);
   border: 1px solid var(--border); border-radius: 6px;
   cursor: pointer;

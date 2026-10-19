@@ -124,3 +124,40 @@
     .spacer { flex: 1 1 auto; }
   }
 }
+
+.explorer {
+  height: 100dvh;
+  .explorer-actions { display: flex; align-items: center; gap: 8px; }
+  .tree-backdrop { display: none; }
+
+  @media (max-width: 700px) {
+    > header { padding: 8px 12px; }
+    .row { flex-wrap: wrap; }
+    .row > .btn { min-width: 40px; min-height: 40px; }
+    #crumbs {
+      flex: 1 1 0; display: block; white-space: nowrap;
+      overflow: auto; scrollbar-width: none;
+    }
+    .explorer-actions {
+      flex: 1 0 100%; justify-content: flex-end;
+      .btn { min-height: 36px; }
+    }
+    #q { flex: 1 0 100%; min-width: 0; font-size: 16px; }
+    .row2 { gap: 8px 6px; }
+    .row2 input[type="text"] { width: 110px; }
+    main { position: relative; }
+    .tree-backdrop {
+      display: block; position: absolute; inset: 0; z-index: 5;
+      border: 0; background: rgb(0 0 0 / 35%);
+    }
+    #tree {
+      position: absolute; inset: 0 auto 0 0; z-index: 6;
+      width: min(300px, 85%); box-shadow: 4px 0 20px rgb(0 0 0 / 20%);
+      .trow { min-height: 36px; }
+    }
+    #preview { position: absolute; inset: 0; z-index: 4; border-left: 0; }
+    footer { padding: 6px 12px; }
+    footer .hint { display: none; }
+    tbody td, thead th { padding-left: 8px; padding-right: 8px; }
+  }
+}

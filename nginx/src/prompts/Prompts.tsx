@@ -18,8 +18,9 @@ function readTag(search: string): string {
   return new URLSearchParams(search).get("tag") ?? "";
 }
 
-function libraryUrl(tag: string): string {
-  return tag ? `/prompts/?${new URLSearchParams({ tag })}` : "/prompts/";
+function libraryUrl(params: URLSearchParams): string {
+  const search = params.toString();
+  return search ? `/prompts/?${search}` : "/prompts/";
 }
 
 function currentUrl(): string {
@@ -32,7 +33,7 @@ export function Prompts() {
 
   const taskId = readTaskId(pathname);
   const tag = readTag(search);
-  const lastLibraryUrl = useRef("/prompts/");
+  const lastLibraryUrl = useRef(history.state?.promptLibraryUrl ?? "/prompts/");
 
   useEffect(() => {
     if (taskId === null) {
@@ -41,7 +42,12 @@ export function Prompts() {
   }, [taskId, url]);
 
   useEffect(() => {
-    const onPop = () => setUrl(currentUrl());
+    const onPop = () => {
+      if (readTaskId(window.location.pathname) !== null) {
+        lastLibraryUrl.current = history.state?.promptLibraryUrl ?? "/prompts/";
+      }
+      setUrl(currentUrl());
+    };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
@@ -54,7 +60,7 @@ export function Prompts() {
 
   const navigate = useCallback((next: string) => {
     if (next !== currentUrl()) {
-      history.pushState(null, "", next);
+      history.pushState({ promptLibraryUrl: lastLibraryUrl.current }, "", next);
     }
     setUrl(next);
   }, []);
@@ -72,14 +78,30 @@ export function Prompts() {
       <Detail
         taskId={taskId}
         onBack={() => navigate(lastLibraryUrl.current)}
-        onHome={() => navigate("/prompts/")}
+        onHome={() => navigate(lastLibraryUrl.current)}
       />
     );
   }
   return (
     <Library
       tag={tag}
-      onTagChange={next => navigate(libraryUrl(next))}
+      search={search}
+      onFilterChange={(key, value) => {
+        const params = new URLSearchParams(search);
+        if (value) {
+          params.set(key, value);
+        } else {
+          params.delete(key);
+        }
+        const next = libraryUrl(params);
+        if (key === "q") {
+          history.replaceState(history.state, "", next);
+          setUrl(next);
+        } else {
+          navigate(next);
+        }
+      }}
+      onHome={() => navigate("/prompts/")}
       onOpen={id => navigate(`/prompts/${id}`)}
       onNew={createAndOpen}
     />

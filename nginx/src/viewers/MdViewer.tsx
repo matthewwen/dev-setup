@@ -253,7 +253,7 @@ export function MdViewer({ path }: { path: string }) {
     void refresh();
   };
 
-  useTaskToggle(bodyRef, path, raw ?? "", onBlockSaved, onBlockReload);
+  useTaskToggle(hostRef, path, raw ?? "", onBlockSaved, onBlockReload);
 
   return (
     <div className="md-viewer">

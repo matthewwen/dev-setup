@@ -119,6 +119,10 @@ export function renderMarkdown(src: string, sharedSlugs?: Map<string, number>, o
     return `<input type="checkbox"${state}${mark === " " ? "" : " checked"}>`;
   }
 
+  function taskText(text: string): string {
+    return text ? `<span class="task-text">${inline(text)}</span>` : "";
+  }
+
   function list(lines: string[], start: number, offset: number): [string, number] {
     const first = lines[start].match(RE_ITEM)!;
     const baseIndent = first[1].length;
@@ -179,7 +183,9 @@ export function renderMarkdown(src: string, sharedSlugs?: Map<string, number>, o
         if (task) {
           cls = ' class="task"';
           const input = checkbox(task[1], it.line);
-          inner = inner.startsWith("<p>") ? inner.replace("<p>", `<p>${input}`) : `<p>${input}</p>${inner}`;
+          inner = inner.startsWith("<p>")
+            ? inner.replace(/^<p>([\s\S]*?)<\/p>/, (_, text: string) => `<p>${input}<span class="task-text">${text}</span></p>`)
+            : `<p>${input}</p>${inner}`;
         }
         if (!loose) {
           inner = inner.replace(/^<p>([\s\S]*?)<\/p>$/, "$1").replace(/^<p>([\s\S]*?)<\/p>\n/, "$1\n");
@@ -273,7 +279,7 @@ export function renderMarkdown(src: string, sharedSlugs?: Map<string, number>, o
     if (line.includes("|") && RE_TROW.test(line) && i + 1 < lines.length && RE_TSEP.test(lines[i + 1])) {
       const [html, next] = table(lines, i, (text, row, column) => {
         const task = text.match(RE_TASK);
-        return task ? checkbox(task[1], row + offset + 1, column) + inline(text.slice(task[0].length)) : inline(text);
+        return task ? checkbox(task[1], row + offset + 1, column) + taskText(text.slice(task[0].length)) : inline(text);
       });
       out.push(html);
       i = next;
@@ -281,7 +287,7 @@ export function renderMarkdown(src: string, sharedSlugs?: Map<string, number>, o
     }
 
     if ((m = line.match(RE_STANDALONE_TASK))) {
-      out.push(`<p class="task">${checkbox(m[1], i + offset + 1)}${inline(line.slice(m[0].length))}</p>`);
+      out.push(`<p class="task">${checkbox(m[1], i + offset + 1)}${taskText(line.slice(m[0].length))}</p>`);
       return i + 1;
     }
 

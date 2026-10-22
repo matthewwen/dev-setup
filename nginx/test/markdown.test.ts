@@ -42,8 +42,8 @@ test("a diff block highlights added and removed lines", () => {
 });
 
 test("task list items render as disabled checkboxes", () => {
-  assert.ok(html.includes('<li class="task"><input type="checkbox" disabled>unchecked</li>'));
-  assert.ok(html.includes('<li class="task"><input type="checkbox" disabled checked>checked</li>'));
+  assert.ok(html.includes('<li class="task"><input type="checkbox" disabled><span class="task-text">unchecked</span></li>'));
+  assert.ok(html.includes('<li class="task"><input type="checkbox" disabled checked><span class="task-text">checked</span></li>'));
 });
 
 test("task markers without trailing text render checkboxes", () => {
@@ -51,10 +51,16 @@ test("task markers without trailing text render checkboxes", () => {
   assert.equal(out, '<ul>\n<li class="task"><input type="checkbox" disabled></li>\n<li class="task"><input type="checkbox" disabled checked></li>\n<li class="task"><input type="checkbox" disabled checked></li>\n</ul>');
 });
 
+test("a completed task wraps only its inline text, leaving nested tasks outside", () => {
+  const out = renderMarkdown("- [x] **parent** [link](https://example.com)\n  - [ ] child\n").html;
+  assert.ok(out.includes('<input type="checkbox" disabled checked><span class="task-text"><strong>parent</strong> <a href="https://example.com">link</a></span>\n<ul>'), out);
+  assert.ok(out.includes('<li class="task"><input type="checkbox" disabled><span class="task-text">child</span></li>'), out);
+});
+
 test("standalone checkboxes keep source lines and leave code markers literal", () => {
   const src = "Intro\n[ ] todo\n[X]\n\n`[ ] literal`\n\n```\n[ ] literal\n```";
   const out = renderMarkdown(src, undefined, { sourceLines: true }).html;
-  assert.ok(out.includes('<p data-line="2" data-end="2" class="task"><input type="checkbox" data-task="2">todo</p>'), out);
+  assert.ok(out.includes('<p data-line="2" data-end="2" class="task"><input type="checkbox" data-task="2"><span class="task-text">todo</span></p>'), out);
   assert.ok(out.includes('<input type="checkbox" data-task="3" checked>'), out);
   assert.equal((out.match(/type="checkbox"/g) ?? []).length, 2);
   assert.ok(out.includes('<code>[ ] literal</code>'), out);
@@ -108,8 +114,8 @@ test("source line attributes are opt-in and change nothing else", () => {
 test("a nested task item carries its absolute source line", () => {
   const src = "---\nt: 1\n---\n\n- a\n\n  - [ ] nested\n- > - [x] quoted\n";
   const out = renderMarkdown(src, undefined, { sourceLines: true }).html;
-  assert.ok(out.includes('<li class="task"><input type="checkbox" data-task="7">nested</li>'), out);
-  assert.ok(out.includes('<li class="task"><input type="checkbox" data-task="8" checked>quoted</li>'), out);
+  assert.ok(out.includes('<li class="task"><input type="checkbox" data-task="7"><span class="task-text">nested</span></li>'), out);
+  assert.ok(out.includes('<li class="task"><input type="checkbox" data-task="8" checked><span class="task-text">quoted</span></li>'), out);
 });
 
 test("a document without front matter starts at line 1", () => {

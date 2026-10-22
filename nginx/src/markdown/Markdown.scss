@@ -10,13 +10,16 @@
   .anchor { margin-left: 8px; color: var(--border); font-weight: 400; opacity: 0; }
   h1:hover .anchor, h2:hover .anchor, h3:hover .anchor, h4:hover .anchor, h5:hover .anchor, h6:hover .anchor { opacity: 1; }
   p { margin: 0 0 16px; }
+  p.task { margin: 4px 0; }
   ul, ol { margin: 0 0 16px; padding-left: 26px; }
+  input[type="checkbox"] { margin: 0; vertical-align: -.1em; }
+  input + .task-text { margin-left: 8px; }
+  input[data-task] { cursor: pointer; }
+  input:checked + .task-text { text-decoration: line-through; }
   li {
     margin: 4px 0;
     > ul, > ol { margin: 4px 0; }
     &.task { list-style: none; margin-left: -20px; }
-    &.task input { margin-right: 8px; }
-    &.task input[data-task] { cursor: pointer; }
   }
   hr { height: 1px; margin: 28px 0; border: 0; background: var(--border); }
   blockquote {

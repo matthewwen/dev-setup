@@ -346,3 +346,7 @@ Inside the fzf popup:
 ## Unison
 
 See `unison/README.md` for bidirectional local/remote sync setup.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).

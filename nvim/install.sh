@@ -41,9 +41,12 @@ if command -v nvim &>/dev/null; then
   echo "Neovim already installed: $(nvim --version | head -1)"
 else
   case "$(uname -s)" in
-    Linux)  install_nvim_linux ;;
-    Darwin) install_nvim_macos ;;
-    *)      echo "Unsupported OS"; exit 1 ;;
+  Linux) install_nvim_linux ;;
+  Darwin) install_nvim_macos ;;
+  *)
+    echo "Unsupported OS"
+    exit 1
+    ;;
   esac
 fi
 
@@ -57,8 +60,8 @@ install_deps() {
     if ! command -v rg &>/dev/null; then
       echo "Installing ripgrep..."
       local rg_ver="14.1.1"
-      curl -fsSL "https://github.com/BurntSushi/ripgrep/releases/download/${rg_ver}/ripgrep-${rg_ver}-x86_64-unknown-linux-musl.tar.gz" \
-        | tar xz --strip-components=1 -C /tmp "ripgrep-${rg_ver}-x86_64-unknown-linux-musl/rg"
+      curl -fsSL "https://github.com/BurntSushi/ripgrep/releases/download/${rg_ver}/ripgrep-${rg_ver}-x86_64-unknown-linux-musl.tar.gz" |
+        tar xz --strip-components=1 -C /tmp "ripgrep-${rg_ver}-x86_64-unknown-linux-musl/rg"
       sudo mv /tmp/rg /usr/local/bin/rg
     fi
 
@@ -66,8 +69,8 @@ install_deps() {
     if ! command -v fd &>/dev/null; then
       echo "Installing fd..."
       local fd_ver="10.2.0"
-      curl -fsSL "https://github.com/sharkdp/fd/releases/download/v${fd_ver}/fd-v${fd_ver}-x86_64-unknown-linux-musl.tar.gz" \
-        | tar xz --strip-components=1 -C /tmp "fd-v${fd_ver}-x86_64-unknown-linux-musl/fd"
+      curl -fsSL "https://github.com/sharkdp/fd/releases/download/v${fd_ver}/fd-v${fd_ver}-x86_64-unknown-linux-musl.tar.gz" |
+        tar xz --strip-components=1 -C /tmp "fd-v${fd_ver}-x86_64-unknown-linux-musl/fd"
       sudo mv /tmp/fd /usr/local/bin/fd
     fi
   elif [[ "$(uname -s)" == "Darwin" ]]; then
@@ -83,9 +86,9 @@ if ! command -v tree-sitter &>/dev/null; then
   if [[ "$(uname -s)" == "Darwin" ]]; then
     brew install tree-sitter
   else
-    local ts_ver="0.25.5"
-    curl -fsSL "https://github.com/tree-sitter/tree-sitter/releases/download/v${ts_ver}/tree-sitter-linux-x64.gz" \
-      | gunzip > /tmp/tree-sitter
+    ts_ver="0.25.5"
+    curl -fsSL "https://github.com/tree-sitter/tree-sitter/releases/download/v${ts_ver}/tree-sitter-linux-x64.gz" |
+      gunzip >/tmp/tree-sitter
     chmod +x /tmp/tree-sitter
     sudo mv /tmp/tree-sitter /usr/local/bin/tree-sitter
   fi

@@ -656,7 +656,7 @@ _edit_completion() {
 _work_script_template() {
     cat <<'EOF'
 #!/usr/bin/env zsh
-source $(dirname $0)/../../dev/common.sh
+source ~/.config/dev-setup/dev/common.sh
 
 export PYTHONPATH=${PYTHONPATH}
 

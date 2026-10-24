@@ -307,6 +307,25 @@ nvim/
 
 ---
 
+## fzf in zsh
+
+`common.sh` loads `dev/zsh/fzf.sh`. Install fzf once with:
+
+```zsh
+fzf-install
+```
+
+You can also run `zsh dev/zsh/fzf.sh` from this repo, then restart your shell.
+macOS uses Homebrew. Linux uses curl and the upstream binary installer, installing
+under `${XDG_DATA_HOME:-$HOME/.local/share}/fzf` without sudo on apt/yum and other
+Linux distributions. Sourcing the script does not install or download anything.
+Existing installations are reused, including older distro packages with separate
+zsh integration files.
+
+In an interactive shell, `Ctrl-r` searches history, `Ctrl-t` inserts file paths,
+and `Alt-c` changes directories. Type `**` followed by Tab for fuzzy completion
+(for example, `vim **<Tab>`).
+
 ## Vim (legacy)
 
 Plugins are managed with [vim-plug](https://github.com/junegunn/vim-plug) (auto-installs on first launch). Symlink the vimrc:

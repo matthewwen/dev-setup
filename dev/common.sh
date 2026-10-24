@@ -18,6 +18,8 @@ dev_setup_unload() {
 # Source user config if it exists
 [ -f "$HOME/.devsetuprc" ] && source "$HOME/.devsetuprc"
 
+source "${${(%):-%N}:A:h}/zsh/fzf.sh"
+
 # ==============================================================================
 # common setup for ws and mr
 # ==============================================================================

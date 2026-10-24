@@ -5,6 +5,7 @@ SKILLS_DIR="$(cd "$(dirname "$0")" && pwd)"
 TARGET_DIRS=(
     "${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
     "${CODEX_SKILLS_DIR:-${CODEX_HOME:-$HOME/.codex}/skills}"
+    "${CURSOR_SKILLS_DIR:-${CURSOR_HOME:-$HOME/.cursor}/skills}"
 )
 
 for target_dir in "${TARGET_DIRS[@]}"; do
@@ -22,4 +23,6 @@ for target_dir in "${TARGET_DIRS[@]}"; do
         echo "Linked $target -> $src"
     done
 done
-echo "Restart Claude Code or Codex to pick up new skills."
+echo "Restart Claude Code, Codex, or Cursor to pick up new skills."
+
+# vim: sw=4

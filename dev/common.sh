@@ -174,6 +174,8 @@ remote-hub() {
 alias vi=nvim
 alias vim=nvim
 
+alias gcf="git commit -F - <<'EOF'"
+
 # ==============================================================================
 # git worktrees update
 # ==============================================================================
@@ -184,9 +186,9 @@ _mw-git-branch() {
 _git-tmp-save() {
     if git diff --cached --quiet; then
         git add .
-        git commit -m "tmp"
+        git -c core.hooksPath=/dev/null commit -m "tmp"
     else
-        git commit -m "tmp"
+        git -c core.hooksPath=/dev/null commit -m "tmp"
     fi
 }
 

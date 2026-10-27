@@ -1,189 +1,181 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Toolbar } from "../shared/Toolbar";
 import { FindBox, useDebounced } from "../shared/FindBox";
-import { rawUrl } from "../shared/fetch";
 import { human } from "../shared/format";
+import { CHUNK, TAIL_BYTES, TextBuffer, readTextRange, followReadMode, type LogLine } from "./text-stream";
 import "./TextViewer.scss";
 
-const CHUNK = 256 * 1024; // bytes per range request
-const TAIL_BYTES = 1024 * 1024; // window loaded by the End button
-
-interface Line {
-  no: number | null;
-  text: string;
+function newReadState() {
+  return {
+    next: 0, done: false, busy: false, tail: false, tailFrom: 0,
+    total: null as number | null, version: null as string | null,
+    buffer: new TextBuffer(), controller: new AbortController(),
+  };
 }
 
-// Mutable read state. Kept out of React state because every chunk mutates
-// several fields together and none of them need to be reactive on their own
-// - report() below is the one place that turns them into UI state.
-interface ReadState {
-  next: number;
-  line: number;
-  partial: string;
-  done: boolean;
-  busy: boolean;
-  tail: boolean;
-  tailFrom: number;
-  total: number | null;
-}
-
-function newReadState(): ReadState {
-  return { next: 0, line: 1, partial: "", done: false, busy: false, tail: false, tailFrom: 0, total: null };
-}
-
-// Reads a file in range requests, so a multi-gigabyte log opens as fast as a
-// small one. nginx answers ranges natively for static files.
 export function TextViewer({ path }: { path: string }) {
-  const src = rawUrl(path);
-  const decoderRef = useRef(new TextDecoder("utf-8"));
-  const stateRef = useRef<ReadState>(newReadState());
-
-  const [lines, setLines] = useState<Line[]>([]);
+  const src = `/__raw${path.split("/").map(encodeURIComponent).join("/")}`;
+  const stateRef = useRef(newReadState());
+  const [lines, setLines] = useState<LogLine[]>([]);
   const [status, setStatus] = useState({ total: null as number | null, done: false, tail: false, busy: false, readBytes: 0 });
   const [wrap, setWrap] = useState(false);
+  const [following, setFollowing] = useState(false);
+  const [pinned, setPinned] = useState(true);
+  const pinnedRef = useRef(true);
   const [rawQuery, setRawQuery] = useState("");
   const query = useDebounced(rawQuery, 120);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [tailBanner, setTailBanner] = useState<{ bytes: number; total: number } | null>(null);
-
   const scrollerRef = useRef<HTMLDivElement>(null);
   const findRef = useRef<HTMLInputElement>(null);
 
   const report = useCallback(() => {
     const s = stateRef.current;
-    const readBytes = s.tail ? (s.total ?? 0) - s.tailFrom : s.next;
-    setStatus({ total: s.total, done: s.done, tail: s.tail, busy: s.busy, readBytes });
+    setStatus({ total: s.total, done: s.done, tail: s.tail, busy: s.busy, readBytes: s.next - s.tailFrom });
   }, []);
 
-  const readRange = useCallback(
-    async (from: number | null, to: number) => {
-      const headers = { Range: from === null ? `bytes=-${to}` : `bytes=${from}-${to}` };
-      const r = await fetch(src, { headers, cache: "no-store" });
-      if (!r.ok && r.status !== 206) {
-        throw new Error(`${r.status} ${r.statusText}`);
-      }
-      const cr = r.headers.get("Content-Range");
-      if (cr) {
-        const total = Number(cr.split("/")[1]);
-        if (!Number.isNaN(total)) {
-          stateRef.current.total = total;
-        }
-      } else if (r.headers.get("Content-Length") && stateRef.current.total === null) {
-        // The server ignored the range and sent the whole file.
-        stateRef.current.total = Number(r.headers.get("Content-Length"));
-      }
-      const buf = await r.arrayBuffer();
-      return { text: decoderRef.current.decode(buf, { stream: true }), bytes: buf.byteLength, ranged: Boolean(cr) };
-    },
-    [src],
-  );
-
-  const appendLines = useCallback((text: string, numbered: boolean) => {
-    const s = stateRef.current;
-    const combined = s.partial + text;
-    const split = combined.split("\n");
-    s.partial = s.done ? "" : split.pop() ?? "";
-    if (!split.length) {
-      return;
-    }
-    const newLines: Line[] = split.map(text => ({ no: numbered ? s.line++ : null, text }));
-    setLines(prev => [...prev, ...newLines]);
+  const reset = useCallback(() => {
+    stateRef.current.controller.abort();
+    stateRef.current = newReadState();
+    return stateRef.current;
   }, []);
 
-  const loadMore = useCallback(async () => {
-    const s = stateRef.current;
-    if (s.busy || s.done) {
-      return;
+  const read = useCallback(async (mode: "more" | "tail" | "live", jump = true) => {
+    const s = mode === "tail" ? reset() : stateRef.current;
+    if (s.busy || (s.done && mode === "more")) {
+      return false;
     }
-    // No report() before the read: s.busy already blocks a second call, and
-    // loadMore runs from the mount effect, where a synchronous setState
-    // costs an extra render.
     s.busy = true;
     try {
-      const to = s.next + CHUNK - 1;
-      const { text, bytes, ranged } = await readRange(s.next, to);
-      s.next += bytes;
-      if (!ranged || bytes < CHUNK || (s.total !== null && s.next >= s.total)) {
-        s.done = true;
+      const result = await readTextRange(src, mode === "tail" ? null : s.next,
+        mode === "tail" ? TAIL_BYTES : s.next + CHUNK - 1, s.controller.signal);
+      if (stateRef.current !== s || s.controller.signal.aborted) {
+        return false;
       }
-      appendLines(text, true);
-      if (s.done && s.partial) {
-        appendLines("", true);
+      if (mode === "tail") {
+        s.tail = true;
+        s.tailFrom = result.start;
+        s.buffer = new TextBuffer(false, result.start > 0);
       }
+      s.total = result.total;
+      s.next = result.start + result.bytes.byteLength;
+      s.done = !result.ranged || s.next >= s.total;
+      s.buffer.append(result.bytes, mode !== "more");
+      setLines(s.buffer.snapshot());
+      setErrorMsg(null);
+      if (mode === "tail" && jump) {
+        pinnedRef.current = true;
+        setPinned(true);
+        requestAnimationFrame(() => {
+          const el = scrollerRef.current;
+          if (el && stateRef.current === s) {
+            el.scrollTop = el.scrollHeight;
+          }
+        });
+      }
+      return true;
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : String(err));
-      s.done = true;
+      if (stateRef.current === s && !s.controller.signal.aborted) {
+        setErrorMsg(err instanceof Error ? err.message : String(err));
+      }
+      return false;
+    } finally {
+      s.busy = false;
+      if (stateRef.current === s && !s.controller.signal.aborted) {
+        report();
+      }
     }
-    s.busy = false;
-    report();
-  }, [appendLines, readRange, report]);
+  }, [reset, src, report]);
 
-  const loadTail = useCallback(async () => {
-    const s = stateRef.current;
-    if (s.busy) {
-      return;
-    }
-    s.busy = true;
-    report();
-    try {
-      const { text, bytes } = await readRange(null, TAIL_BYTES);
-      s.tail = true;
-      s.done = true;
-      s.partial = "";
-      s.tailFrom = s.total === null ? 0 : Math.max(0, s.total - bytes);
-      setLines([]);
-      setTailBanner(s.tailFrom > 0 ? { bytes, total: s.total ?? bytes } : null);
-      appendLines(text, false);
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : String(err));
-    }
-    s.busy = false;
-    report();
-    requestAnimationFrame(() => {
-      const el = scrollerRef.current;
-      if (el) {
-        el.scrollTop = el.scrollHeight;
-      }
-    });
-  }, [appendLines, readRange, report]);
+  const loadMore = useCallback(() => read("more"), [read]);
+  const loadTail = useCallback(() => read("tail"), [read]);
 
   const restart = useCallback(() => {
-    stateRef.current = newReadState();
+    setFollowing(false);
+    reset();
     setLines([]);
-    setTailBanner(null);
     setErrorMsg(null);
-    const el = scrollerRef.current;
-    if (el) {
-      el.scrollTop = 0;
-    }
+    scrollerRef.current?.scrollTo(0, 0);
     loadMore();
-  }, [loadMore]);
+  }, [reset, loadMore]);
 
-  // The first read. App keys this viewer on its path, so a new path mounts a
-  // new TextViewer instead of reusing this one.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- every setState in loadMore runs after its first await
     loadMore();
+    return () => stateRef.current.controller.abort();
   }, [loadMore]);
 
-  // Keeps reading while the reader approaches the bottom.
+  useEffect(() => {
+    if (!following) {
+      return;
+    }
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout>;
+    let first = true;
+    const controller = new AbortController();
+    const poll = async () => {
+      let delay = 1000;
+      try {
+        const response = await fetch(src, { method: "HEAD", cache: "no-store", signal: controller.signal });
+        if (!response.ok) {
+          throw new Error(`${response.status} ${response.statusText}`);
+        }
+        const length = response.headers.get("Content-Length");
+        if (length === null || !Number.isFinite(Number(length))) {
+          throw new Error("The server did not return the file size.");
+        }
+        const size = Number(length);
+        const version = response.headers.get("ETag") ?? response.headers.get("Last-Modified");
+        const s = stateRef.current;
+        const mode = first ? "tail" : followReadMode(s.next, size, s.version, version);
+        const updated = mode === null || await read(mode, first);
+        if (!stopped && updated) {
+          first = false;
+          stateRef.current.version = version;
+          if ((stateRef.current.total ?? 0) > stateRef.current.next) {
+            delay = 0;
+          }
+          setErrorMsg(null);
+        }
+      } catch (err) {
+        if (!stopped) {
+          setErrorMsg(err instanceof Error ? err.message : String(err));
+        }
+      }
+      if (!stopped) {
+        timer = setTimeout(poll, delay);
+      }
+    };
+    poll();
+    return () => {
+      stopped = true;
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [following, read, src]);
+
+  useLayoutEffect(() => {
+    const el = scrollerRef.current;
+    if (following && pinnedRef.current && el) {
+      el.scrollTop = el.scrollHeight;
+    }
+  }, [following, lines]);
+
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el) {
       return;
     }
     const onScroll = () => {
+      const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 40;
+      pinnedRef.current = atBottom;
+      setPinned(atBottom);
       const s = stateRef.current;
-      if (s.done || s.busy || s.tail) {
-        return;
-      }
-      if (el.scrollTop + el.clientHeight > el.scrollHeight - 600) {
+      if (!following && !s.done && !s.busy && !s.tail && el.scrollTop + el.clientHeight > el.scrollHeight - 600) {
         loadMore();
       }
     };
     el.addEventListener("scroll", onScroll);
     return () => el.removeEventListener("scroll", onScroll);
-  }, [loadMore]);
+  }, [following, loadMore]);
 
   useEffect(() => {
     const onKeydown = (e: KeyboardEvent) => {
@@ -205,10 +197,7 @@ export function TextViewer({ path }: { path: string }) {
         loadTail();
         e.preventDefault();
       } else if (e.key === "g") {
-        const el = scrollerRef.current;
-        if (el) {
-          el.scrollTop = 0;
-        }
+        scrollerRef.current?.scrollTo(0, 0);
         e.preventDefault();
       } else if (e.key === "w") {
         setWrap(w => !w);
@@ -241,26 +230,23 @@ export function TextViewer({ path }: { path: string }) {
 
   const pct = status.total ? Math.min(100, (status.readBytes / status.total) * 100) : 0;
   const statusText = [
-    status.tail ? "tail" : "from start",
+    following ? (pinned ? "following live" : "live · scroll paused") : status.tail ? "tail" : "from start",
     `${human(status.readBytes)} of ${status.total === null ? "?" : human(status.total)}`,
-    status.done ? "complete" : `${Math.round(pct)}%`,
+    following ? "checks every second" : status.done ? "complete" : `${Math.round(pct)}%`,
   ].join("  ·  ");
 
-  function highlighted(text: string) {
-    if (!needle) {
-      return text;
-    }
-    const at = text.toLowerCase().indexOf(needle);
-    if (at < 0) {
-      return text;
-    }
-    return (
-      <>
-        {text.slice(0, at)}
-        <mark>{text.slice(at, at + query.length)}</mark>
-        {text.slice(at + query.length)}
-      </>
-    );
+  function highlighted(line: LogLine) {
+    const at = needle ? line.text.toLowerCase().indexOf(needle) : -1;
+    let offset = 0;
+    return line.runs.map((run, i) => {
+      const start = offset;
+      offset += run.text.length;
+      const from = Math.max(0, at - start);
+      const to = Math.min(run.text.length, at + query.length - start);
+      return <span key={i} style={run.style}>{at >= 0 && from < to ? <>
+        {run.text.slice(0, from)}<mark>{run.text.slice(from, to)}</mark>{run.text.slice(to)}
+      </> : run.text}</span>;
+    });
   }
 
   return (
@@ -276,11 +262,14 @@ export function TextViewer({ path }: { path: string }) {
               placeholder="find in loaded text"
               hitsLabel={rawQuery ? (hits ? `${hits} ${hits === 1 ? "line" : "lines"}` : "no match") : ""}
             />
-            <button className="btn" onClick={loadMore} disabled={status.done || status.busy}>
+            <button className="btn" onClick={loadMore} disabled={following || status.done || status.busy}>
               Load more
             </button>
             <button className="btn" onClick={loadTail}>
               End
+            </button>
+            <button className={following ? "btn on" : "btn"} aria-pressed={following} onClick={() => setFollowing(value => !value)}>
+              Follow
             </button>
             <button className={wrap ? "btn on" : "btn"} onClick={() => setWrap(w => !w)}>
               Wrap
@@ -290,10 +279,10 @@ export function TextViewer({ path }: { path: string }) {
       />
       <main ref={scrollerRef}>
         <div id="body">
-          {lines.length === 0 && !errorMsg && "Loading…"}
-          {tailBanner && (
+          {lines.length === 0 && !errorMsg && (status.done ? "No output yet." : "Loading…")}
+          {status.tail && (
             <div className="card">
-              Showing the last {human(tailBanner.bytes)} of {human(tailBanner.total)}.{" "}
+              {following ? "Live view keeps up to 10,000 recent lines. " : "Showing the latest output. "}
               <a
                 href="#"
                 onClick={e => {
@@ -309,10 +298,10 @@ export function TextViewer({ path }: { path: string }) {
           {lines.map((line, i) => (
             <div className="ln" key={i} ref={i === firstHit ? firstHitRef : undefined}>
               <span className="no">{line.no ?? ""}</span>
-              <span className="tx">{highlighted(line.text)}</span>
+              <span className="tx">{highlighted(line)}</span>
             </div>
           ))}
-          {errorMsg && <div className="card error">{errorMsg}</div>}
+          {errorMsg && <div className="card error">{errorMsg}{following && " · Retrying…"}</div>}
         </div>
       </main>
       <footer>

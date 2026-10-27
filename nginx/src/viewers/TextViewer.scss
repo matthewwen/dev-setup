@@ -19,6 +19,7 @@
   }
   .ln {
     display: flex;
+    min-height: 1.55em;
     &:hover { background: var(--bg-soft); }
     .no {
       flex: 0 0 68px;

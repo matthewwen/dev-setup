@@ -142,6 +142,15 @@ def collapse(text):
     return " ".join(text.split())
 
 
+def normalize_tasks(text):
+    return re.sub(
+        r"(^|\|)([ \t]*(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?)\[[ xX]\](?=[ \t\r|]|$)",
+        r"\1\2[ ]",
+        text,
+        flags=re.MULTILINE,
+    )
+
+
 def block_hash(text):
     """Hash of the block with every run of whitespace collapsed.
 
@@ -199,6 +208,7 @@ def resolve(anchor, lines):
     size = int(anchor.get("endLine") or line) - line + 1
     want = anchor.get("hash")
     count = len(lines)
+    quote = collapse(normalize_tasks(anchor.get("quote") or ""))
 
     def window(start):
         return "\n".join(lines[start - 1:start - 1 + size])
@@ -211,15 +221,18 @@ def resolve(anchor, lines):
     def hit(confidence, start):
         return {"confidence": confidence, "line": start, "endLine": start + size - 1, "text": window(start)}
 
-    if want and size > 0 and whole(line) and block_hash(window(line)) == want:
+    def matches(start):
+        text = window(start)
+        return (want and block_hash(text) == want) or (quote and collapse(normalize_tasks(text)) == quote)
+
+    if size > 0 and whole(line) and matches(line):
         return hit("exact", line)
-    if want and size > 0:
-        matches = [start for start in range(1, count - size + 2) if whole(start) and block_hash(window(start)) == want]
-        if len(matches) == 1:
-            return hit("moved", matches[0])
-    quote = collapse(anchor.get("quote") or "")
+    if size > 0:
+        found = [start for start in range(1, count - size + 2) if whole(start) and matches(start)]
+        if len(found) == 1:
+            return hit("moved", found[0])
     if quote:
-        found = find_quote(lines, quote)
+        found = find_quote([normalize_tasks(text) for text in lines], quote)
         if found:
             start, end = found
             return {"confidence": "quote", "line": start, "endLine": end, "text": "\n".join(lines[start - 1:end])}

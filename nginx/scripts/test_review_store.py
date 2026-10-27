@@ -152,6 +152,18 @@ class ResolveTest(StoreCase):
         self.rewrite(DOC.replace("Measured on a 105.8 MiB log.\n", ""))
         self.assertEqual(store.resolve(anchor, self.lines), {"confidence": "orphan"})
 
+    def test_checkbox_toggle_preserves_anchor_in_both_directions(self):
+        unchecked = ["- [ ] Review the plan"]
+        checked = ["- [x] Review the plan"]
+        anchor = store.make_anchor(unchecked, 1, 1)
+        self.assertEqual(store.resolve(anchor, checked)["confidence"], "exact")
+        anchor = store.make_anchor(checked, 1, 1)
+        self.assertEqual(store.resolve(anchor, unchecked)["confidence"], "exact")
+
+    def test_changed_task_text_still_orphans_comment(self):
+        anchor = store.make_anchor(["- [ ] Review the plan"], 1, 1)
+        self.assertEqual(store.resolve(anchor, ["- [x] Delete the plan"]), {"confidence": "orphan"})
+
     def test_duplicated_block_is_ambiguous(self):
         anchor = store.make_anchor(self.lines, 9, 9)
         self.rewrite(DOC.replace("# Title\n", "# Title\n\nMeasured on a 105.8 MiB log.\n"))

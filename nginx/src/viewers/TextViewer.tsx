@@ -5,6 +5,23 @@ import { human } from "../shared/format";
 import { CHUNK, TAIL_BYTES, TextBuffer, readTextRange, followReadMode, type LogLine } from "./text-stream";
 import "./TextViewer.scss";
 
+type LogView = "start" | "tail" | "follow";
+const LOG_VIEW_COOKIE = "dev-setup-log-view";
+const LOG_WRAP_COOKIE = "dev-setup-log-wrap";
+
+function savedLogPreference(path: string, name: string) {
+  if (!/\.log$/i.test(path)) {
+    return undefined;
+  }
+  return document.cookie.split(";").map(part => part.trim())
+    .find(part => part.startsWith(`${name}=`))?.slice(name.length + 1);
+}
+
+function savedLogView(path: string): LogView {
+  const value = savedLogPreference(path, LOG_VIEW_COOKIE);
+  return value === "tail" || value === "follow" ? value : "start";
+}
+
 function newReadState() {
   return {
     next: 0, done: false, busy: false, tail: false, tailFrom: 0,
@@ -15,11 +32,13 @@ function newReadState() {
 
 export function TextViewer({ path }: { path: string }) {
   const src = `/__raw${path.split("/").map(encodeURIComponent).join("/")}`;
+  const [initialView] = useState(() => savedLogView(path));
+  const viewRef = useRef(initialView);
   const stateRef = useRef(newReadState());
   const [lines, setLines] = useState<LogLine[]>([]);
   const [status, setStatus] = useState({ total: null as number | null, done: false, tail: false, busy: false, readBytes: 0 });
-  const [wrap, setWrap] = useState(false);
-  const [following, setFollowing] = useState(false);
+  const [wrap, setWrap] = useState(() => savedLogPreference(path, LOG_WRAP_COOKIE) === "1");
+  const [following, setFollowing] = useState(initialView === "follow");
   const [pinned, setPinned] = useState(true);
   const pinnedRef = useRef(true);
   const [rawQuery, setRawQuery] = useState("");
@@ -27,6 +46,21 @@ export function TextViewer({ path }: { path: string }) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const findRef = useRef<HTMLInputElement>(null);
+
+  const saveView = useCallback((view: LogView) => {
+    viewRef.current = view;
+    if (/\.log$/i.test(path)) {
+      document.cookie = `${LOG_VIEW_COOKIE}=${view}; Max-Age=31536000; Path=/; SameSite=Lax`;
+    }
+  }, [path]);
+
+  const toggleWrap = useCallback(() => {
+    const next = !wrap;
+    setWrap(next);
+    if (/\.log$/i.test(path)) {
+      document.cookie = `${LOG_WRAP_COOKIE}=${next ? "1" : "0"}; Max-Age=31536000; Path=/; SameSite=Lax`;
+    }
+  }, [path, wrap]);
 
   const report = useCallback(() => {
     const s = stateRef.current;
@@ -87,21 +121,32 @@ export function TextViewer({ path }: { path: string }) {
   }, [reset, src, report]);
 
   const loadMore = useCallback(() => read("more"), [read]);
-  const loadTail = useCallback(() => read("tail"), [read]);
+  const loadTail = useCallback(() => {
+    saveView(viewRef.current === "follow" ? "follow" : "tail");
+    return read("tail");
+  }, [read, saveView]);
+
+  const toggleFollowing = () => {
+    saveView(following ? "tail" : "follow");
+    setFollowing(!following);
+  };
 
   const restart = useCallback(() => {
+    saveView("start");
     setFollowing(false);
     reset();
     setLines([]);
     setErrorMsg(null);
     scrollerRef.current?.scrollTo(0, 0);
     loadMore();
-  }, [reset, loadMore]);
+  }, [reset, loadMore, saveView]);
 
   useEffect(() => {
-    loadMore();
+    if (initialView !== "follow") {
+      read(initialView === "tail" ? "tail" : "more");
+    }
     return () => stateRef.current.controller.abort();
-  }, [loadMore]);
+  }, [initialView, read]);
 
   useEffect(() => {
     if (!following) {
@@ -200,13 +245,13 @@ export function TextViewer({ path }: { path: string }) {
         scrollerRef.current?.scrollTo(0, 0);
         e.preventDefault();
       } else if (e.key === "w") {
-        setWrap(w => !w);
+        toggleWrap();
         e.preventDefault();
       }
     };
     window.addEventListener("keydown", onKeydown);
     return () => window.removeEventListener("keydown", onKeydown);
-  }, [loadTail]);
+  }, [loadTail, toggleWrap]);
 
   const needle = query.toLowerCase();
   let hits = 0;
@@ -268,10 +313,10 @@ export function TextViewer({ path }: { path: string }) {
             <button className="btn" onClick={loadTail}>
               End
             </button>
-            <button className={following ? "btn on" : "btn"} aria-pressed={following} onClick={() => setFollowing(value => !value)}>
+            <button className={following ? "btn on" : "btn"} aria-pressed={following} onClick={toggleFollowing}>
               Follow
             </button>
-            <button className={wrap ? "btn on" : "btn"} onClick={() => setWrap(w => !w)}>
+            <button className={wrap ? "btn on" : "btn"} onClick={toggleWrap}>
               Wrap
             </button>
           </>

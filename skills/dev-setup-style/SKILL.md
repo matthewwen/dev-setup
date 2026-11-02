@@ -87,8 +87,13 @@ skims several documents must get the point from this section alone.
 ### 2. Problem statement
 
 The repeated problems this design removes. Write them as functional
-requirements, numbered `P1`, `P2`, ... in the form "The system must ...".
-Each problem is one sentence plus, if needed, one sentence of evidence.
+requirements in a bullet list, labeled `P1`, `P2`, ... in the form
+"The system must ...". Each problem is one sentence plus, if needed, one
+sentence of evidence.
+
+- **P1:** The system must ...
+- **P2:** The system must ...
+- **P3:** The system must ...
 
 ### 3. Proposed solution
 
@@ -123,7 +128,9 @@ one short bullet list only when the reader would otherwise ask.
 
 Split the solution into chunks the user approves one at a time. Each chunk
 fits in one pull request. The first chunk is the bare minimum that runs end
-to end. Later chunks add refinements. For each chunk give:
+to end. Later chunks add refinements. Give each chunk and each implementation
+step a Markdown checkbox (`- [ ]`). Mark completed items with `- [x]` as work
+progresses. Keep pending items unchecked. For each chunk give:
 
 - Name and the problems it closes (`P1`, `P3`).
 - Files created, by exact path.

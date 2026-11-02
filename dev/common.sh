@@ -837,4 +837,91 @@ echo_palette() {
     done
 }
 
+_cat_color() {
+    local code="$1"
+    shift
+    if { [ -t 1 ] || [ -n "$FORCE_COLOR" ]; } && [ -z "$NO_COLOR" ]; then
+        printf '\033[%sm' "$code"
+        local cat_result=0
+        command cat "$@" || cat_result=$?
+        printf '\033[0m'
+        return "$cat_result"
+    else
+        command cat "$@"
+    fi
+}
+
+cat_style() { _cat_color "$@"; }
+cat_256() { local n="$1"; shift; _cat_color "38;5;$n" "$@"; }
+cat_bg256() { local n="$1"; shift; _cat_color "48;5;$n" "$@"; }
+cat_rgb() { local r="$1" g="$2" b="$3"; shift 3; _cat_color "38;2;$r;$g;$b" "$@"; }
+cat_bgrgb() { local r="$1" g="$2" b="$3"; shift 3; _cat_color "48;2;$r;$g;$b" "$@"; }
+
+cat_black() { _cat_color '0;30' "$@"; }
+cat_red() { _cat_color '0;31' "$@"; }
+cat_green() { _cat_color '0;32' "$@"; }
+cat_yellow() { _cat_color '0;33' "$@"; }
+cat_blue() { _cat_color '0;34' "$@"; }
+cat_magenta() { _cat_color '0;35' "$@"; }
+cat_cyan() { _cat_color '0;36' "$@"; }
+cat_white() { _cat_color '0;37' "$@"; }
+cat_bright_black() { _cat_color '0;90' "$@"; }
+cat_bright_red() { _cat_color '0;91' "$@"; }
+cat_bright_green() { _cat_color '0;92' "$@"; }
+cat_bright_yellow() { _cat_color '0;93' "$@"; }
+cat_bright_blue() { _cat_color '0;94' "$@"; }
+cat_bright_magenta() { _cat_color '0;95' "$@"; }
+cat_bright_cyan() { _cat_color '0;96' "$@"; }
+cat_bright_white() { _cat_color '0;97' "$@"; }
+cat_gray() { _cat_color '0;90' "$@"; }
+cat_grey() { _cat_color '0;90' "$@"; }
+cat_orange() { _cat_color '38;5;208' "$@"; }
+cat_amber() { _cat_color '38;5;214' "$@"; }
+cat_gold() { _cat_color '38;5;220' "$@"; }
+cat_peach() { _cat_color '38;5;216' "$@"; }
+cat_salmon() { _cat_color '38;5;209' "$@"; }
+cat_coral() { _cat_color '38;5;203' "$@"; }
+cat_crimson() { _cat_color '38;5;160' "$@"; }
+cat_maroon() { _cat_color '38;5;88' "$@"; }
+cat_brown() { _cat_color '38;5;130' "$@"; }
+cat_tan() { _cat_color '38;5;180' "$@"; }
+cat_khaki() { _cat_color '38;5;143' "$@"; }
+cat_olive() { _cat_color '38;5;100' "$@"; }
+cat_lime() { _cat_color '38;5;118' "$@"; }
+cat_chartreuse() { _cat_color '38;5;82' "$@"; }
+cat_forest() { _cat_color '38;5;28' "$@"; }
+cat_mint() { _cat_color '38;5;121' "$@"; }
+cat_teal() { _cat_color '38;5;30' "$@"; }
+cat_turquoise() { _cat_color '38;5;44' "$@"; }
+cat_aqua() { _cat_color '38;5;51' "$@"; }
+cat_sky() { _cat_color '38;5;117' "$@"; }
+cat_azure() { _cat_color '38;5;33' "$@"; }
+cat_steel() { _cat_color '38;5;67' "$@"; }
+cat_slate() { _cat_color '38;5;103' "$@"; }
+cat_navy() { _cat_color '38;5;18' "$@"; }
+cat_indigo() { _cat_color '38;5;54' "$@"; }
+cat_violet() { _cat_color '38;5;99' "$@"; }
+cat_purple() { _cat_color '38;5;141' "$@"; }
+cat_lavender() { _cat_color '38;5;183' "$@"; }
+cat_plum() { _cat_color '38;5;96' "$@"; }
+cat_orchid() { _cat_color '38;5;170' "$@"; }
+cat_pink() { _cat_color '38;5;205' "$@"; }
+cat_rose() { _cat_color '38;5;211' "$@"; }
+cat_hotpink() { _cat_color '38;5;198' "$@"; }
+cat_silver() { _cat_color '38;5;250' "$@"; }
+cat_charcoal() { _cat_color '38;5;238' "$@"; }
+cat_bold() { _cat_color '1' "$@"; }
+cat_dim() { _cat_color '2' "$@"; }
+cat_italic() { _cat_color '3' "$@"; }
+cat_underline() { _cat_color '4' "$@"; }
+cat_blink() { _cat_color '5' "$@"; }
+cat_reverse() { _cat_color '7' "$@"; }
+cat_strike() { _cat_color '9' "$@"; }
+cat_err() { _cat_color '0;31' "$@" >&2; }
+cat_warn() { _cat_color '38;5;208' "$@" >&2; }
+cat_ok() { _cat_color '0;32' "$@"; }
+cat_info() { _cat_color '0;36' "$@"; }
+cat_debug() { _cat_color '0;90' "$@"; }
+cat_header() { _cat_color '1;4;36' "$@"; }
+
 # vim: sw=4

@@ -415,6 +415,58 @@ tnotify() {
 # Auto-bell: notify via tmux bell when any command runs longer than threshold
 # Set TNOTIFY_THRESHOLD to adjust (default 10 seconds). Set to 0 to disable.
 # ==============================================================================
+timer() (
+    emulate -L zsh
+    local seconds=${1:-300} step=${2:-10}
+    if (( $# > 2 )) || [[ $seconds != <-> || $step != <-> ]]; then
+        print -u2 -- 'Usage: timer [SECONDS=300] [STEP=10]'
+        return 2
+    fi
+    if (( ${#seconds} > 9 || ${#step} > 9 )); then
+        print -u2 -- 'timer: seconds and step must have at most 9 digits'
+        return 2
+    fi
+    local -i duration=$(( 10#$seconds )) adjustment=$(( 10#$step ))
+    if (( adjustment == 0 )); then
+        print -u2 -- 'timer: step must be greater than zero'
+        return 2
+    fi
+    if [[ ! -t 0 || ! -t 1 ]]; then
+        print -u2 -- 'timer: an interactive terminal is required'
+        return 1
+    fi
+    zmodload zsh/datetime || return
+    local tty_mode
+    tty_mode=$(stty -g) || return
+    trap 'stty "$tty_mode"' EXIT
+    local -F deadline=$(( EPOCHREALTIME + duration )) remaining timeout
+    local -i total
+    local key
+    trap 'printf "\r\033[K🐾 Timer cancelled.\n"; exit 130' INT
+    while true; do
+        remaining=$(( deadline - EPOCHREALTIME ))
+        (( remaining > 0 )) || break
+        total=$(( remaining ))
+        (( total < remaining )) && (( total++ ))
+        printf '\r\033[K🐣 %02d:%02d:%02d  [+] +%ds  [-] -%ds  [Tab] skip' \
+            $(( total / 3600 )) $(( total / 60 % 60 )) $(( total % 60 )) \
+            $adjustment $adjustment
+        timeout=$(( remaining - total + 1 ))
+        key=
+        if read -rsk 1 -t "$timeout" key; then
+            case $key in
+                +|=) (( deadline += adjustment )) ;;
+                -) (( deadline -= adjustment )) ;;
+                $'\t')
+                    printf '\r\033[K🐾 Timer skipped.\n'
+                    return 0
+                    ;;
+            esac
+        fi
+    done
+    printf '\r\033[K🐥 Time is up!\a\n'
+)
+
 TNOTIFY_THRESHOLD=${TNOTIFY_THRESHOLD:-10}
 zmodload zsh/datetime
 

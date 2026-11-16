@@ -131,6 +131,23 @@ A missing key without a default returns status 1 without creating a file.
 Empty values count as existing settings. Values are stored as text and never
 executed as shell code.
 
+## Timer
+
+`timer [SECONDS=300] [STEP=10]` shows a live 🐣 countdown in your terminal.
+Press `+` (or `=`) to add one step, `-` to subtract one step, or Tab to skip
+immediately. Time keeps counting down while you use the controls. The timer
+rings the terminal bell when it finishes; Ctrl-C cancels with status 130.
+
+```zsh
+timer           # five minutes; adjust by 10 seconds
+timer 90        # 90 seconds; adjust by 10 seconds
+timer 600 60    # ten minutes; adjust by one minute
+```
+
+Durations are nonnegative whole seconds, and the adjustment step must be
+positive. Each argument accepts up to nine digits. The timer requires an
+interactive terminal; Tab skips successfully so a following command can run.
+
 ## Work Scripts
 
 This repo ships `bin/setups/work-example` as a template only. Copy it into

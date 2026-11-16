@@ -20,6 +20,58 @@ dev_setup_unload() {
 
 source "${${(%):-%N}:A:h}/zsh/fzf.sh"
 
+settings-set() {
+    if (( $# != 2 )); then
+        print -u2 -- 'Usage: settings-set KEY VALUE'
+        return 2
+    fi
+    local file
+    file=$(_settings_file "$1") || return
+    local dir=${file:h} pending
+    mkdir -p -m 700 -- "$dir" || return
+    pending=$(mktemp "$dir/.setting.XXXXXXXX") || return
+    {
+        print -r -- "$2" > "$pending" && mv -f -- "$pending" "$file"
+    } always {
+        [[ ! -e $pending ]] || command rm -f -- "$pending"
+    }
+}
+
+settings-get() {
+    if (( $# < 1 || $# > 2 )); then
+        print -u2 -- 'Usage: settings-get KEY [DEFAULT]'
+        return 2
+    fi
+    local file
+    file=$(_settings_file "$1") || return
+    if [[ ! -e $file ]]; then
+        if (( $# == 1 )); then
+            print -u2 -- "settings-get: no setting: $1"
+            return 1
+        fi
+        settings-set "$1" "$2" || return
+    fi
+    cat -- "$file"
+}
+
+_settings_file() {
+    if [[ -z $1 || $1 == *[^a-zA-Z0-9_.-]* || $1 == . || $1 == .. ]]; then
+        print -u2 -- 'settings: keys must contain only letters, numbers, dots, underscores, or hyphens (excluding . and ..)'
+        return 2
+    fi
+    print -r -- "${XDG_STATE_HOME:-$HOME/.local/state}/dev-setup/settings/$1"
+}
+
+_settings_completion() {
+    (( CURRENT == 2 )) || return
+    local dir="${XDG_STATE_HOME:-$HOME/.local/state}/dev-setup/settings"
+    local -a keys
+    keys=("$dir"/*(ND.:t))
+    compadd -- "${keys[@]}"
+}
+
+compdef _settings_completion settings-set settings-get
+
 # ==============================================================================
 # common setup for ws and mr
 # ==============================================================================

@@ -111,6 +111,26 @@ its metadata remain valid when the whole repository is moved or synced.
 This requires Git 2.48 or newer on every machine accessing the repository.
 Existing worktrees can be converted with `git worktree repair --relative-paths`.
 
+## Settings
+
+`settings-set KEY VALUE` saves a custom setting as a plain text file under
+`~/.local/state/dev-setup/settings/` (or `$XDG_STATE_HOME/dev-setup/settings/`
+when set). Both commands tab-complete keys from the files currently in that
+directory, including files you create yourself. Keys may contain letters,
+numbers, dots, underscores, and hyphens; `.` and `..` are excluded.
+
+```zsh
+settings-set editor nvim
+settings-get editor                 # prints nvim
+settings-get theme dark             # saves dark if theme is missing, then prints it
+settings-get theme light            # prints the existing value
+settings-set greeting 'hello world'
+```
+
+A missing key without a default returns status 1 without creating a file.
+Empty values count as existing settings. Values are stored as text and never
+executed as shell code.
+
 ## Work Scripts
 
 This repo ships `bin/setups/work-example` as a template only. Copy it into

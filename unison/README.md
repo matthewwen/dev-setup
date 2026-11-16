@@ -27,10 +27,11 @@ Verify SSH access to the remote host:
 ssh <remote-host>
 ```
 
-Create the local profile:
+Install the shared rules once and create the local profile:
 
 ```sh
 mkdir -p ~/.unison
+cp unison/common.inc ~/.unison/common.inc
 cp unison/dev-sync.prf ~/.unison/dev-sync.prf
 ```
 
@@ -53,6 +54,34 @@ unison dev-sync
 ```
 
 Review the proposed changes, then press `g` to apply them.
+
+## Additional Directories
+
+Every directory pair needs only a small profile in `~/.unison/`, for example
+`~/.unison/notes.prf`:
+
+```ini
+include common.inc
+
+root = /Users/you/notes
+root = ssh://remote-host//home/you/notes
+```
+
+Run it with `unison notes`. All profiles include the same `common.inc`, so
+editing its exclusions or sync policy updates every directory's behavior.
+To update the shared rules from this repository, copy `unison/common.inc` to
+`~/.unison/common.inc` again; your directory profiles stay in place. You can
+also symlink the shared file to this checkout to pick up repository updates:
+
+```sh
+ln -sfn "$PWD/unison/common.inc" ~/.unison/common.inc
+```
+
+`.claude/` is synced by default, including handoffs and worktrees. Generated
+files matching the shared exclusions are still skipped within `.claude/`.
+Relative Git worktree links allow synced worktrees to resolve on both hosts;
+use `git-add-worktree` for new worktrees, or convert existing ones with
+`git worktree repair --relative-paths` before syncing them.
 
 ## Remote Setup
 
@@ -142,7 +171,8 @@ repeat = 10
 
 ## Profile Behavior
 
-`dev-sync.prf` is configured for unattended development sync:
+`common.inc`, included by each directory profile, configures unattended
+development sync:
 
 ```ini
 auto = true

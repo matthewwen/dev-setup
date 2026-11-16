@@ -217,7 +217,7 @@ _git-wt-link-claude() {
 git-add-worktree() {
     local dir=${1}
     _git-tmp-save
-    git worktree add .claude/worktrees/${dir} ${2}
+    git worktree add --relative-paths ".claude/worktrees/${dir}" ${2} || return
     _git-wt-link-claude .claude/worktrees/${dir}
 }
 

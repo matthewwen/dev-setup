@@ -103,6 +103,14 @@ the tmux-style keybindings in `herdr/config.toml` with:
 | `nginxctl on\|off\|restart\|status` | manage the nginx web server and explorer API |
 | `mdreview list\|reply\|resolve ...` | read and answer review comments on rendered Markdown |
 
+## Git Worktrees
+
+`git-add-worktree <name> [ref]` creates `.claude/worktrees/<name>` using
+`git worktree add --relative-paths`, so Git's links between the checkout and
+its metadata remain valid when the whole repository is moved or synced.
+This requires Git 2.48 or newer on every machine accessing the repository.
+Existing worktrees can be converted with `git worktree repair --relative-paths`.
+
 ## Work Scripts
 
 This repo ships `bin/setups/work-example` as a template only. Copy it into
